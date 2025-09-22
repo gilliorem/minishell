@@ -98,3 +98,5 @@ CTRL C. most of the time, those 3 come together.
 - tc*
 - tg*
 - tputs()
+
+good seing Mohid 
