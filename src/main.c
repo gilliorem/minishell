@@ -1,12 +1,18 @@
 #include "../include/minishell.h"
 
-void	sigint_handler(int sig)
+void	reset_prompt(int sig)
 {
 	(void)sig;
 	write(STDOUT_FILENO, "\n", 1);
-	rl_replace_line("", 0);
+	rl_replace_line("test", 10);
 	rl_on_new_line();
 	rl_redisplay();
+}
+
+void	handle_sigint(int sig)
+{
+	printf("Caught signal %d\n", sig);
+	exit(0);
 }
 
 void	get_user_input()
@@ -27,6 +33,10 @@ void	get_user_input()
 
 int main()
 {
-	signal(SIGINT, sigint_handler);
-	get_user_input();
+	signal(SIGINT, reset_prompt);
+	while (1)
+	{
+		get_user_input();
+		sleep(1);
+	}
 }
