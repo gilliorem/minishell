@@ -2,6 +2,7 @@
 
 void	reset_prompt(int sig)
 {
+	//mohd is here
 	(void)sig;
 	write(STDOUT_FILENO, "\n", 1);
 	rl_replace_line("test", 10);
