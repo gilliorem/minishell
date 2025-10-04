@@ -352,5 +352,3 @@ returns 1 if fd is a terminal and 0 if not [file / pipe / redirection]
 if 0 returned, errno is set to indicate reason
 
 required to detect if the shell is running interactively (user typing at a prompt) or as part of a script / pipe
-
-

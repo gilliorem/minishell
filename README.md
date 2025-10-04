@@ -45,14 +45,14 @@ returns the user-provided-input
 *The trio*
 Those three functions are being called when the signal SIGINT is sent=
 (CTRL C). those 3 functions always get call together.
-- rl_replace_line() first we replace the line with an empty buffer
-- rl_on_new_line() 2nd we set the cursor at the begining
-- rl_redisplay() 3rd we redraw the original prompt.
+- `rl_replace_line()` first we replace the line with an empty buffer
+- `rl_on_new_line()` 2nd we set the cursor at the begining
+- `rl_redisplay()` 3rd we redraw the original prompt.
 
 #### History function
 *we go through the history-list of command using up arrow.*
-- add_history(): adds the cmd-line to a list. (history)
-- rl_clear_history(): clear that list.
+- `add_history()`: adds the cmd-line to a list. (history)
+- `rl_clear_history()`: clear that list.
 
 #### Fd functions
 - fork(): initiate a new child process
@@ -85,7 +85,8 @@ Those three functions are being called when the signal SIGINT is sent=
 
 #### REDIRECTION functions
 - dup2() redirection the input/output of a command. 
-- pipe() create a two ends-fds array. one end for read, the other to write. so you can use the output of a command as the input for another one and so on.
+- pipe() create a two ends-fds array. one end for read, the other to write. 
+so you can use the output of a command as the input for another one and so on.
 
 #### ERROR
 - strerror() print a specific error msg base on its error code
@@ -103,3 +104,42 @@ Those three functions are being called when the signal SIGINT is sent=
 - tputs()
 
 good seing Mohid 
+
+let me get more familiar with 
+- build in cmds
+- other cmds to run based on the different context
+- the AST: the binary tree that handle the execution part.
+
+
+Ok. so here is my understanding of the global scope of this project:
+There are 3 main layers that each have a specific responsability
+and is reprensented in a specific data structure
+
+## INTERPRETING THE USER PROMPT
+
+### THE LEXER 
+Input: cli
+Its responsability: check each character signification.
+Form KEYWORDS.
+< infile | cat -e
+{LESSER, WORD, PIPE, WORD, WORD}
+output
+Data structure: an array of characters.
+
+### THE PARSER
+Responsability: Assemble a structures of KEYWORDS that can be treated properly:
+split the elements in the AST ready for execution
+Data structure: link list
+
+### EXECUTOR
+Responsability: Execute each cmd in this specific order: fork, exec, pipe, redirect 
+by walking the cmd tree and run it.
+Data structure: AST (binary tree)
+Based on the number of commands, the process will be repeted *number of cmd* time
+Built-in commands are being processedd by the parent because they will change the environment (cd)
+Each command is represented as a new child.
+
+### THE EXECUTION
+
+#### FOR BUILT IN CMDS
+

@@ -10,6 +10,8 @@ Oct 4, 15:57
 It is a vast project, starting to code to early is probably get us in the wrong direction.
 Let's keep on gathering more info until wednesday, 8th 
 
+
+
 Sep 26, 12:51 pm
 -
 ### GIT: Keep one clean version and 2 personal versions
