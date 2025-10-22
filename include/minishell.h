@@ -8,5 +8,6 @@
 # include <unistd.h>
 # include <signal.h>
 
+void	ft_echo(char *shell_str, char *echo, char *echo_args);
 
 #endif
