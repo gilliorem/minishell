@@ -8,15 +8,13 @@
 # include <unistd.h>
 # include <signal.h>
 
-
-
-void	temp_echo(char *cmd_line, char *cmd_name);
+void	ft_echo(char *cmd_line, char *cmd_name);
 void	get_input()
 {
 	while (1)
 	{
 		char *input = readline("> ");
-		temp_echo(input, "echo");
+		ft_echo(input, "echo");
 	}
 }
 
@@ -27,12 +25,15 @@ int	ft_isspace(char c)
 	return 0;	
 }
 
-void	temp_echo(char *cmd_line, char *cmd_name)
+void	ft_echo(char *cmd_line, char *cmd_name)
 {
-	if (strcmp(cmd_name, "echo") == 0)
+	if (strncmp(cmd_name, "echo", 4) == 0)
 		cmd_name = "echo";
 	else if (strcmp(cmd_name, "echo -n") == 0)
+	{
 		cmd_name = "echo -n";
+		printf("%s\n", cmd_name);
+	}
 	else 
 	{
 		perror("echo");
