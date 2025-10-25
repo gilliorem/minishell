@@ -1,59 +1,28 @@
-#include <stdio.h>
-# include "../libft/libft.h"
-# include <stdlib.h>
-# include <string.h>
-# include <stdio.h>
-# include <readline/readline.h>
-# include <readline/history.h>
-# include <unistd.h>
-# include <signal.h>
+#include "../include/minishell.h"
 
-void	ft_echo(char *cmd_line, char *cmd_name);
-void	get_input()
+// jump the shell str len
+// jump the cmd_len
+// start printing
+void	ft_echo(char *shell_str, char *echo, char *echo_args)
 {
-	while (1)
-	{
-		char *input = readline("> ");
-		ft_echo(input, "echo");
-	}
-}
+	char	*start;
+	int	i;
 
-int	ft_isspace(char c)
-{
-	if (c == ' ')
-		return 1;
-	return 0;	
-}
-
-void	ft_echo(char *cmd_line, char *cmd_name)
-{
-	if (strncmp(cmd_name, "echo", 4) == 0)
-		cmd_name = "echo";
-	else if (strcmp(cmd_name, "echo -n") == 0)
+	i = 0;
+	start = shell_str;
+	while (shell_str[i])
 	{
-		cmd_name = "echo -n";
-		printf("%s\n", cmd_name);
+		start++;
+		i++;
 	}
-	else 
+	i = 0;
+	while (echo[i])
 	{
-		perror("echo");
-		return ;
+		start++;
+		i++;
 	}
-	char *echo_cmd = strstr(cmd_line, cmd_name);
-	if (!echo_cmd || *echo_cmd == '\0')
-		return ;
-	while (!ft_isspace(*echo_cmd) && *echo_cmd)
+	while (*echo_args)
 	{
-		echo_cmd++;
+		ft_putchar(*echo_args++);	
 	}
-	echo_cmd++;
-	printf("%s\n", echo_cmd);
-	return ;
-}
-// need to redefine argv within minishell readline
-
-
-int main()
-{
-	get_input();
 }
