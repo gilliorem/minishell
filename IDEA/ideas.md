@@ -1,3 +1,8 @@
+Oct 25 21:19
+Second night session
+I've created a tmp/ dir to test out small part of the code
+like built-in
+cd - pwd - echo ...
 Sep 30, 7:30PM
 
 Dude this project is quite vast - I've been reading for the last 4 days and there is still lots to go
