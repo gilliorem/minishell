@@ -143,3 +143,7 @@ Each command is represented as a new child.
 
 #### FOR BUILT IN CMDS
 
+Oct 27, 20:03
+For the command that modify the env list, do we have to user our own *envlist* ?
+Or the shell has its own envlist (but where does it come from...?)
+in the case that: we are using the actual shell env list, using expand (that will append a variable to our env list) do we have to malloc the whole list and add the variable ? or is there another solution ?

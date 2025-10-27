@@ -9,11 +9,12 @@
 # include <readline/history.h>
 # include <unistd.h>
 # include <signal.h>
+# include <stdbool.h>
 
 
-int parse_input(char *input, char **args);
+int parse_input(char *input, char **args, int *quotetype);
 void	pwd_builtin();
 char*	get_username();
-void	cd_builtin(char **env);
+int	cd_builtin(char *arg, char *path, char *env[]);
 char	*get_env_home(char **env);
 #endif
