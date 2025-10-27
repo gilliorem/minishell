@@ -24,21 +24,35 @@ char*	get_username()
 
 char	*get_env_home(char **env)
 {
-	char *new_home = malloc(1096);
+	char *home = NULL;
 	for (int i = 0; env[i]; i++)
-		if (strncmp(env[i], "HOME", 4) == 0)
-			new_home = ft_strchr(env[i], '/');
-	return new_home;
+		if (strncmp(env[i], "HOME=", 5) == 0)
+			home = ft_strchr(env[i], '/');
+	return home;
 }
 
-char	*get_pwd(char **env)
+char	*find_env_index(char **env, char *key)
 {
 	char *pwd = NULL;
 	for (int i = 0; env[i]; i++)
-		if (strncmp(env[i], "PWD", 3) == 0) 
+		if (strncmp(env[i], key, 4) == 0) 
 			pwd = ft_strchr(env[i], '/');
 	return pwd;
 }
+
+/*
+char old[PATH_MAX];
+getcwd(old, sizeof(old)); // get current before cd
+
+if (chdir(path_or_home) != 0)
+    return (perror("chdir"), 0);
+
+char new[PATH_MAX];
+getcwd(new, sizeof(new)); // after cd
+
+update_env_var(env, "OLDPWD", old);
+update_env_var(env, "PWD", new);
+*/
 
 // need to update the PWD and OLDPWD
 int	cd_builtin(char *arg, char *path, char *env[])
@@ -60,9 +74,15 @@ int	cd_builtin(char *arg, char *path, char *env[])
 			perror("chdir error");
 			return (0);
 		}
-		getcwd(buf, sizeof(buf));
-		char *pwd = get_pwd(env);
-		ft_strlcpy(buf, pwd, ft_strlen(buf));
+		// we did a chdir so lets now update our env;
+
+		char *pwd = getcwd(buf, sizeof(buf));
+		for (int i = 0; env[i]; i++)
+		{
+			if (strncmp("PWD=", env[i], 4) == 0)
+				env[i] = ft_strdup(pwd);
+		}
+		printf("%s\n",pwd);
 	}
 	return (1);
 }
