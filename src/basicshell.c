@@ -20,8 +20,8 @@ char *exp_env_var(const char *input)
     if (!var_name) return NULL;
     char *var_value = getenv(var_name);
     free(var_name);
-    if (!var_value) return strdup("");
-    else return strdup(var_value);
+    if (!var_value) return ft_strdup("");
+    else return ft_strdup(var_value);
 }
 
 int parse_input(char *input, char **args, int *quotetype)
@@ -67,6 +67,13 @@ int parse_input(char *input, char **args, int *quotetype)
     return i;
 }
 
+t_shell *init_shell()
+{
+	t_shell *shell;
+	shell = ft_calloc(1, sizeof(t_shell));
+	return shell;
+}
+
 int main(int argc, char *argv[], char *env[])
 {
 	(void) argv;
@@ -77,6 +84,9 @@ int main(int argc, char *argv[], char *env[])
     int quotetype[100];
     pid_t pid;
     int status, tc, i=0;
+    t_shell *shell;
+    shell = init_shell();
+    copy_envlist(shell, env);
     while (1)
     {
         input = readline("MOGILLIO> ");
@@ -85,6 +95,7 @@ int main(int argc, char *argv[], char *env[])
         tc = parse_input(input, args, quotetype);
         if (tc == 0) { free(input); continue; }
         i = 0;
+	/* init the shell struct */	
         while (i < tc)
         {
             if (args[i][0] == '$' && quotetype[i] != 1)

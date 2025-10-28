@@ -2,7 +2,7 @@ NAME = minishell
 CC = cc
 CFLAGS = -Wall -Werror -Wextra 
 SRC_DIR = src
-SRC = basicshell.c builtin.c
+SRC = basicshell.c builtin.c envlist.c
 
 OBJ = $(addprefix $(SRC_DIR)/,$(SRC:.c=.o))
 INCLUDES = -lreadline -Iinclude -Ilibft

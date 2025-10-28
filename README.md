@@ -147,3 +147,25 @@ Oct 27, 20:03
 For the command that modify the env list, do we have to user our own *envlist* ?
 Or the shell has its own envlist (but where does it come from...?)
 in the case that: we are using the actual shell env list, using expand (that will append a variable to our env list) do we have to malloc the whole list and add the variable ? or is there another solution ?
+
+### THE ENV LIST 
+As we run our minishell. we need to make a local copy of our env list.
+So that if assign a variable and export it in the current process and we run a new minishell process, we can access the variable. so each time we run a minishell, it makes a copy of the previous/actual shell env list. 
+
+So how to update the env list ?
+
+- Make a copy of the env list
+- store it in our own struct.
+- all of our built-in build on that.
+
+2. How to update
+
+Let’s say you’ve got env as a char ** where each string looks like "KEY=value".
+
+To update, find the variable with strncmp(env[i], key, keylen) and check that the next char is =.
+
+Free that string.
+
+Allocate a new "KEY=value" and replace it at the same index.
+
+If the key doesn’t exist, you append it (realloc your array).
