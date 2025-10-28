@@ -3,7 +3,11 @@
 void	copy_envlist(t_shell *shell, char *env[])
 {
 	int	i;
-	shell->env_list = (char**)ft_calloc(1, sizeof(char*));
+
+	i = 0;
+	while (env[i])
+		i++;
+	shell->env_list = (char**)ft_calloc(i + 1, sizeof(char*));
 
 	i = 0;
 	while (env[i])
@@ -12,27 +16,47 @@ void	copy_envlist(t_shell *shell, char *env[])
 		//printf("%s\n", shell->env_list[i]);
 		i++;
 	}
+	shell->env_list[i] = NULL;
 }
 
-char	*update_pwd_env(t_shell *shell)
+void	update_pwd_env(t_shell *shell)
 {
-	char	*cur_dir;
 	char	buf[1024];
-	int	cur_dir_len;
 	int	i;
 	
 	i = 0;
 	chdir(buf);
-	cur_dir_len = ft_strlen(cur_dir);
-	
 	while (shell->env_list[i])
 	{
 		if (ft_strncmp(shell->env_list[i], "PWD=", 4) == 0)
 		{
 			shell->pwd = ft_strjoin("PWD=", buf);
-			shell->env_list[i] = ft_strdup(shell->pwd);
-			
+			free(shell->env_list[i]);
+			shell->env_list[i] = shell->pwd;
 		}
 		i++;
 	}
+}
+
+char	*get_env_home(char **env)
+{
+	char *home = NULL;
+	for (int i = 0; env[i]; i++)
+		if (strncmp(env[i], "HOME=", 5) == 0)
+			home = ft_strchr(env[i], '/');
+	return home;
+}
+/* helper to `grep` the PWD and OLD PWD */
+void	print_pwds(char **shell_env)
+{
+	char *pwd = NULL;
+	char *oldpwd = NULL;
+	for (int i = 0; shell_env[i]; i++)
+	{
+		if (strncmp(shell_env[i], "PWD=", 4) == 0)
+			pwd = ft_strchr(shell_env[i], '/');
+		if (ft_strncmp(shell_env[i], "OLDPWD=", 7) == 0)
+			oldpwd = ft_strchr(shell_env[i], '/');
+	}
+	printf("[PWD:%s]\n[OLDPWD:%s]\n",pwd,oldpwd);
 }

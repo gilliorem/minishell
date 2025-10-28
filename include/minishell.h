@@ -11,6 +11,9 @@
 # include <signal.h>
 # include <stdbool.h>
 
+// TODO: upgrade the structure for the current args[0]
+// we treat a cmd as a whole unit by itself even if there are spaces in between its options.
+
 typedef struct s_shell
 {
 	char	**env_list;
@@ -24,10 +27,15 @@ int parse_input(char *input, char **args, int *quotetype);
 
 /*env variables*/
 void copy_envlist(t_shell *shell, char *env[]);
-
+void	update_pwd_env(t_shell *shell);
 
 /* built-in */
 char	*get_env_home(char *env[]);
 void	pwd_builtin();
-int	cd_builtin(char *arg, char *path, char *env[]);
+int	env_builtin(char *arg, t_shell *shell);
+int	cd_builtin(char *arg, char *path, t_shell *shell);
+
+
+/* debug helpers */
+void	print_pwds(char **shell_env);
 #endif

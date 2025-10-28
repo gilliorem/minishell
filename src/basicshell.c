@@ -109,12 +109,17 @@ int main(int argc, char *argv[], char *env[])
             }
             i++;
         }
-	if (strcmp(args[0], "cd") == 0)
+	if (ft_strncmp(args[0], "env", 4) == 0)
 	{
-		cd_builtin(args[0], args[1], env);
+		env_builtin(args[0], shell);
+		continue;
+	}
+	if (ft_strncmp(args[0], "cd", 2) == 0)
+	{
+		cd_builtin(args[0], args[1], shell);
 		continue; 
 	}
-	if (strcmp(args[0], "pwd") == 0)
+	if (ft_strncmp(args[0], "pwd", 3) == 0)
 	{
 		pwd_builtin();
 		continue; 
