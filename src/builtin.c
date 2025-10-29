@@ -36,6 +36,7 @@ int	cd_builtin(char *arg, char *path, t_shell *shell)
 {
 	char *home = get_env_home(shell->env_list);
 	int dir = 0;
+	update_old_pwd_env(shell);
 	if (ft_strncmp(arg, "cd", 3) == 0)
 	{
 		if (path != NULL)

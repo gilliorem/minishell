@@ -1,18 +1,17 @@
 NAME = minishell
-CC = cc
-CFLAGS = -Wall -Werror -Wextra 
+CC = gcc
+CFLAGS =  -Wall -Werror -Wextra
 SRC_DIR = src
 SRC = basicshell.c builtin.c envlist.c
-
 OBJ = $(addprefix $(SRC_DIR)/,$(SRC:.c=.o))
-INCLUDES = -lreadline -Iinclude -Ilibft
+INCLUDES =  -Iinclude -Ilibft 
 LIBFT_DIR = libft
 LIBFT = $(LIBFT_DIR)/libft.a
 
 all: $(NAME)
 
 $(NAME): $(OBJ) $(LIBFT)
-	$(CC) $(INCLUDES) $(CFLAGS) $(OBJ) $(LIBFT) -o $(NAME)
+	$(CC) $(INCLUDES) $(CFLAGS) $(OBJ) $(LIBFT) -o $(NAME) -lreadline
 
 $(SRC_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@

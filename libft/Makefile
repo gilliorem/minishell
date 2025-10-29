@@ -6,7 +6,7 @@ BFILES = ft_lstadd_front_bonus.c ft_lstnew_bonus.c ft_lstsize_bonus.c ft_lstadd_
 
 OBJS = $(CFILES:.c=.o) 
 OBJSB = $(BFILES:.c=.o)
-CC = cc
+CC = gcc
 CFLAGS = -Wall -Wextra -Werror
 
 .c.o:

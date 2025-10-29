@@ -19,7 +19,7 @@ typedef struct s_shell
 	char	**env_list;
 	char	*env_value;
 	char	*pwd;
-	char	*old_pwd;
+	char	*oldpwd;
 }	t_shell;
 
 /*parsing */
@@ -28,6 +28,7 @@ int parse_input(char *input, char **args, int *quotetype);
 /*env variables*/
 void copy_envlist(t_shell *shell, char *env[]);
 void	update_pwd_env(t_shell *shell);
+void	update_old_pwd_env(t_shell *shell);
 
 /* built-in */
 char	*get_env_home(char *env[]);

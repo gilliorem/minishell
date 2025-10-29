@@ -25,7 +25,7 @@ void	update_pwd_env(t_shell *shell)
 	int	i;
 	
 	i = 0;
-	chdir(buf);
+	getcwd(buf, 1024);
 	while (shell->env_list[i])
 	{
 		if (ft_strncmp(shell->env_list[i], "PWD=", 4) == 0)
@@ -33,6 +33,22 @@ void	update_pwd_env(t_shell *shell)
 			shell->pwd = ft_strjoin("PWD=", buf);
 			free(shell->env_list[i]);
 			shell->env_list[i] = shell->pwd;
+		}
+		i++;
+	}
+}
+
+void	update_old_pwd_env(t_shell *shell)
+{
+	int	i;
+
+	i = 0;
+	while (shell->env_list[i])
+	{	
+		if (ft_strncmp(shell->env_list[i], "OLDPWD=", 7) == 0)
+		{
+			shell->oldpwd = ft_strdup(shell->pwd);
+			shell->env_list[i] = shell->oldpwd;
 		}
 		i++;
 	}
