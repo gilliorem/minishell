@@ -51,8 +51,36 @@ int	cd_builtin(char *arg, char *path, t_shell *shell)
 			perror("chdir error");
 			return (0);
 		}
-		update_pwd_env(shell);
-		print_pwds(shell->env_list);
+	}
+	update_pwd_env(shell);
+	print_pwds(shell->env_list);
+	return (1);
+}
+
+int	export_builtin(char *arg, t_shell *shell)
+{
+
+}
+
+// TODO: Replace the char *arg with shell->arg
+int	unset_builtin(t_shell *shell, char *var)
+{
+	int	i;
+
+	i = 0;
+	if (ft_strncmp(shell->args[0], "unset", 6) != 0)
+	{
+		perror("unset");
+		return (0);
+	}
+	while (shell->env_list[i])
+	{
+		if (ft_strncmp(shell->env_list[i], var, ft_strlen(var) + 1) == 0)
+		{
+			free(shell->env_list[i]);
+			shell->env_list[i] = NULL;
+		}
+		i++;
 	}
 	return (1);
 }

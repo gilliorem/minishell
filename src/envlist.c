@@ -40,14 +40,17 @@ void	update_pwd_env(t_shell *shell)
 
 void	update_old_pwd_env(t_shell *shell)
 {
+	char	buf[1024];
 	int	i;
 
 	i = 0;
+	getcwd(buf, 1024);
 	while (shell->env_list[i])
 	{	
 		if (ft_strncmp(shell->env_list[i], "OLDPWD=", 7) == 0)
 		{
-			shell->oldpwd = ft_strdup(shell->pwd);
+			shell->oldpwd = ft_strjoin("OLDPWD=", buf);
+			free(shell->env_list[i]);
 			shell->env_list[i] = shell->oldpwd;
 		}
 		i++;
