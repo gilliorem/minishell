@@ -16,6 +16,8 @@
 
 typedef struct s_shell
 {
+	char	**args;
+	char	*arg;
 	char	**env_list;
 	char	*env_value;
 	char	*pwd;
