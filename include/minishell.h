@@ -28,7 +28,7 @@ typedef struct s_shell
 int parse_input(char *input, char **args, int *quotetype);
 
 /*env variables*/
-void copy_envlist(t_shell *shell, char *env[]);
+void	copy_envlist(t_shell *shell, char *env[]);
 void	update_pwd_env(t_shell *shell);
 void	update_old_pwd_env(t_shell *shell);
 
@@ -37,6 +37,8 @@ char	*get_env_home(char *env[]);
 void	pwd_builtin();
 int	env_builtin(char *arg, t_shell *shell);
 int	cd_builtin(char *arg, char *path, t_shell *shell);
+int	unset_builtin(t_shell *shell, char **arg);
+int	export_builtin(t_shell *shell, char *arg, char *var);
 
 
 /* debug helpers */
