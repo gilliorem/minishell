@@ -57,28 +57,65 @@ int	cd_builtin(char *arg, char *path, t_shell *shell)
 	return (1);
 }
 
-int	export_builtin(char *arg, t_shell *shell)
-{
-
-}
-
-// TODO: Replace the char *arg with shell->arg
-int	unset_builtin(t_shell *shell, char *var)
+//TODO so export with no argument list the env list and sort them in different order that env does. 
+//it looks that it is alphabetical order but special characters are at the end.
+//I wonder how env sorts it by default
+//
+//
+//if the variable already exist, I need to overwrite it instead of adding a new one.
+//need to upgrade the logic and actually check for the value of var
+//in the case of overwriting it.
+int	export_builtin(t_shell *shell, char *arg, char *var)
 {
 	int	i;
 
 	i = 0;
-	if (ft_strncmp(shell->args[0], "unset", 6) != 0)
+	if (ft_strncmp(arg, "export", 7) != 0)
 	{
-		perror("unset");
 		return (0);
 	}
 	while (shell->env_list[i])
 	{
-		if (ft_strncmp(shell->env_list[i], var, ft_strlen(var) + 1) == 0)
+		if (ft_strnstr(shell->env_list[i], var, ft_strlen(var)) != NULL)
+		{
+			shell->env_list[i] = ft_strdup(var);
+			printf("var match with a current var\n");
+		}
+		i++;
+	}
+	if (shell->env_list[i] == NULL)
+	{
+		shell->env_list[i] = ft_strdup(var);
+		i++;
+		shell->env_list[i] = NULL;
+	}
+	return (1);
+}
+
+// TODO: Replace the char *arg with shell->arg
+// we also need a function that count the numbers of args/words the user pass an input 
+// need a "global function" that will run all our builtins.
+int	unset_builtin(t_shell *shell, char **args)
+{
+	int	i;
+
+	i = 0;
+	if (args[1] == NULL || args[1][0] == '\0')
+	{
+		//printf("unset needs a value\n");
+		return (0);
+	}
+	if (ft_strncmp(args[0], "unset", 6) != 0)
+	{
+		return (0);
+	}
+	while (shell->env_list[i])
+	{
+		if (ft_strncmp(shell->env_list[i], args[1], ft_strlen(args[1])) == 0)
 		{
 			free(shell->env_list[i]);
 			shell->env_list[i] = NULL;
+			printf("%s removed.\n", args[1]);
 		}
 		i++;
 	}

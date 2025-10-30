@@ -63,6 +63,11 @@ char	*get_env_home(char **env)
 	for (int i = 0; env[i]; i++)
 		if (strncmp(env[i], "HOME=", 5) == 0)
 			home = ft_strchr(env[i], '/');
+	if (!home)
+	{
+		perror("env home");
+		return (NULL);
+	}
 	return home;
 }
 /* helper to `grep` the PWD and OLD PWD */

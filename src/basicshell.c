@@ -95,7 +95,6 @@ int main(int argc, char *argv[], char *env[])
         tc = parse_input(input, args, quotetype);
         if (tc == 0) { free(input); continue; }
         i = 0;
-	/* init the shell struct */	
         while (i < tc)
         {
             if (args[i][0] == '$' && quotetype[i] != 1)
@@ -124,14 +123,18 @@ int main(int argc, char *argv[], char *env[])
 		pwd_builtin();
 		continue; 
 	}
-        pid = fork();
-        if (strcmp(args[0],"exit") == 0) 
+	if (unset_builtin(shell, args))
+		continue;
+	if (export_builtin(shell, args[0], args[1]))
+		continue;
+        if (ft_strncmp(args[0],"exit", 5) == 0) 
         {
             i = 0;
             while (i < tc) free(args[i++]);
             free(input);    
             break;
         }
+        pid = fork();
         if (pid == 0) { execvp(args[0], args); exit(EXIT_FAILURE);}
             else if (pid < 0) perror("fork error");
             else waitpid(pid, &status, 0);
