@@ -169,14 +169,9 @@ int	export_builtin(t_shell *shell, char *arg, char *var)
 	
 	while (shell->env_list[i])
 	{
-		//printf("%s\n", shell->env_list[i]);
 		env_values = ft_split(shell->env_list[i], '=');
-		//printf("var_v0:[%s], var_v1:[%s]\n", var_values[0], var_values[1]);
-		//printf("env0:[%s], env1:[%s]\n", env_values[0], env_values[1]);
 		if (ft_strncmp(var_values[0], env_values[0], ft_strlen(env_values[0])) == 0)
 		{
-			printf("var_key[1]:[%s], env_key[1]:[%s]\n",var_values[0], env_values[0]);
-			printf("%s\n", shell->env_list[i]);
 			free(shell->env_list[i]);
 			shell->env_list[i] = NULL;
 			shell->env_list[i] = ft_strdup(var);
