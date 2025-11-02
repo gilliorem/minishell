@@ -12,13 +12,13 @@ char *ft_strcpy(const char *src, int len)
     return dest;
 }
 
-char *exp_env_var(const char *input)
+char *exp_env_var(t_shell *shell, const char *input)
 {
     int i = 1; 
     while (input[i] && (isalnum(input[i]) || input[i] == '_')) i++;
     char *var_name = ft_strcpy(input + 1, i - 1);
     if (!var_name) return NULL;
-    char *var_value = getenv(var_name);
+    char *var_value = getenv_builtin(shell, var_name);
     free(var_name);
     if (!var_value) return ft_strdup("");
     else return ft_strdup(var_value);
@@ -99,7 +99,7 @@ int main(int argc, char *argv[], char *env[])
         {
             if (args[i][0] == '$' && quotetype[i] != 1)
             {
-                char *expanded = exp_env_var(args[i]);
+                char *expanded = exp_env_var(shell, args[i]);
                 if (expanded)
                 {
                     free(args[i]);

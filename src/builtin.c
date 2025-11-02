@@ -1,11 +1,49 @@
 #include "../include/minishell.h"
 
-// this function has to be a builtin because it works on the actual
-// process environment. the parent process.
-// structure wise: I need to have the environment.
-// what does it mean to change environment ?...
-// after a successfull cd, getcwd()
-// to find the username, can execve the whoami
+
+/* Even if this is not asked, we are
+ * going to need our own getenv function.
+ * in order to properly handle the cases
+ * like echo $USER - unset USER - echo $USER.
+ * because right now getenv function depends
+ * on the original env list, we need to pass
+ * our own copy of the list as an new arg. */
+
+/* we will go through our own env list
+ * 	look if the var name match the env_var_name
+ * 	if it does, we return that value
+ * 	else we return NULL
+ */
+
+/* I think I do need to split the list like I did in unset*/
+// if the env_key match with the env_key list, then return it
+//
+// char *home = getenv(HOME)
+// first we check if HOME is a key in our shellenvlist
+// >>		/home/regillio
+// si ca match
+// we want to get the value at this key
+
+char	*getenv_builtin(t_shell *shell, char* env_key)
+{
+	int	i;
+	char	**envs;
+	char	*env_value;
+
+	i = 0;
+	env_value = NULL;
+	while (shell->env_list[i])
+	{
+		envs = ft_split(shell->env_list[i], '=');
+		if (ft_strncmp(envs[0], env_key, ft_strlen(env_key)) == 0)
+		{
+			env_value = envs[1];
+			return (env_value);
+		}
+		i++;
+	}
+	return (env_value);
+}
 
 int	echo_builtin(char **args)
 {
@@ -15,6 +53,8 @@ int	echo_builtin(char **args)
 	argc = 0;
 	while (args[argc])
 		argc++;
+	if (argc < 2)
+		return (0);
 	if (ft_strncmp(args[0], "echo", 5) != 0)
 		return (0);
 	i = 1;
@@ -102,7 +142,6 @@ int	cd_builtin(char *arg, char *path, t_shell *shell)
 //need to upgrade the logic and actually check for the value of var
 //in the case of overwriting it.
 
-
 // char *var = REMI=BG
 // var_values[0] = REMI
 // var_values[1] = BG <<< overwrite this one.
@@ -110,8 +149,6 @@ int	cd_builtin(char *arg, char *path, t_shell *shell)
 // we compare it with the other var value
 // or we can check if it is in env_list[i]
 // if it is, we just re write the whole line.
-//
-//
 //
 // I need to have a list of the keys and a list the values
 // for the env variables. it is going to make things so much simpler
@@ -149,7 +186,6 @@ int	export_builtin(t_shell *shell, char *arg, char *var)
 	}
 	if (shell->env_list[i] == NULL)
 	{
-		printf("going in the NULL if\n");
 		shell->env_list[i] = ft_strdup(var);
 		i++;
 		shell->env_list[i] = NULL;
