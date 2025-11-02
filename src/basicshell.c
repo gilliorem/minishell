@@ -127,6 +127,8 @@ int main(int argc, char *argv[], char *env[])
 		continue;
 	if (export_builtin(shell, args[0], args[1]))
 		continue;
+	if (echo_builtin(args))
+		continue;
         if (ft_strncmp(args[0],"exit", 5) == 0) 
         {
             i = 0;

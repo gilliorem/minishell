@@ -7,6 +7,42 @@
 // after a successfull cd, getcwd()
 // to find the username, can execve the whoami
 
+int	echo_builtin(char **args)
+{
+	int	argc;
+	int	i;
+
+	argc = 0;
+	while (args[argc])
+		argc++;
+	if (ft_strncmp(args[0], "echo", 5) != 0)
+		return (0);
+	i = 1;
+	if (ft_strncmp(args[1], "-n", 3) != 0)
+	{
+		while (args[i])
+		{
+			if (i == argc - 1)
+				printf("%s", args[i]);
+			else
+				printf("%s ", args[i]);
+			i++;
+		}
+		printf("\n");
+		return (1);
+	}
+	i = 2;
+	while (args[i])
+	{
+		if (i == argc - 1)
+			printf("%s", args[i]);
+		else
+			printf("%s ", args[i]);
+		i++;
+	}
+	return (1);
+}
+
 void	pwd_builtin()
 {
 	char buf[1096];

@@ -34,6 +34,7 @@ void	update_old_pwd_env(t_shell *shell);
 
 /* built-in */
 char	*get_env_home(char *env[]);
+int	echo_builtin(char **args);
 void	pwd_builtin();
 int	env_builtin(char *arg, t_shell *shell);
 int	cd_builtin(char *arg, char *path, t_shell *shell);
