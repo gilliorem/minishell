@@ -167,3 +167,7 @@ Free that string.
 Allocate a new "KEY=value" and replace it at the same index.
 
 If the key doesn’t exist, you append it (realloc your array).
+
+Nov 4, 02:59
+So the plan is to merge the current codebase with Mohid's new lexer.
+The lexer store the content in a linked list. with a value a type and the next token.
