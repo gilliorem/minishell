@@ -58,6 +58,7 @@ Those three functions are being called when the signal SIGINT is sent=
 - fork(): initiate a new child process
 - wait(): parent wait for its child to finish his process to be sure that parent does not run his process before child is done.
 - access(): check file existence, type, permission
+
 #### File functions
 - stat(): gets info about the file
 - lstat(): like stat but with symbolic file.
@@ -103,15 +104,10 @@ so you can use the output of a command as the input for another one and so on.
 - tg*
 - tputs()
 
-good seing Mohid 
-
-let me get more familiar with 
 - build in cmds
 - other cmds to run based on the different context
 - the AST: the binary tree that handle the execution part.
 
-
-Ok. so here is my understanding of the global scope of this project:
 There are 3 main layers that each have a specific responsability
 and is reprensented in a specific data structure
 
@@ -124,10 +120,12 @@ Form KEYWORDS.
 < infile | cat -e
 {LESSER, WORD, PIPE, WORD, WORD}
 output
-Data structure: an array of characters.
+Data structure: a linked list 
+the lexer goes through the `user input` and make out a linked list out of it.
+a node is either a word, a pipe, a lesser, a double lesser, a greater, a double greater, an and, an or
 
 ### THE PARSER
-Responsability: Assemble a structures of KEYWORDS that can be treated properly:
+Responsability: Assemble a structure of KEYWORDS that can be treated properly:
 split the elements in the AST ready for execution
 Data structure: link list
 
@@ -140,7 +138,7 @@ Built-in commands are being processedd by the parent because they will change th
 Each command is represented as a new child.
 
 ### THE EXECUTION
-
+once the input is parsed, ready to be walked by the AST, we walk the AST recursively. as there is an operator/cmd
 #### FOR BUILT IN CMDS
 
 Oct 27, 20:03
