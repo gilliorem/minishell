@@ -6,7 +6,7 @@
 /*   By: regillio <regillio@student.42singapore.sg  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/07 21:05:34 by regillio          #+#    #+#             */
-/*   Updated: 2025/07/03 15:39:52 by regillio         ###   ########.fr       */
+/*   Updated: 2025/11/03 14:46:05 by regillio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -43,6 +43,7 @@ int		ft_putnbr_hex_lowercase(unsigned int nb);
 int		ft_putnbr_hex_lowercase_ul(unsigned long nb);
 int		ft_putnbr_ptr(void *ptr);
 /*Libft*/
+int		ft_isspace(int c);
 int		ft_isdigit(int c);
 int		ft_isalpha(int c);
 int		ft_isalnum(int c);

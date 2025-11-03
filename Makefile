@@ -2,7 +2,8 @@ NAME = minishell
 CC = gcc
 CFLAGS =  -Wall -Werror -Wextra
 SRC_DIR = src
-SRC = basicshell.c builtin.c envlist.c
+SRC = basicshell.c builtin.c envlist.c main.c expand.c utils.c free.c \
+      lexer.c expand.c free.c utils.c
 OBJ = $(addprefix $(SRC_DIR)/,$(SRC:.c=.o))
 INCLUDES =  -Iinclude -Ilibft 
 LIBFT_DIR = libft

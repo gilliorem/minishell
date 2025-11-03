@@ -1,29 +1,5 @@
 #include "../include/minishell.h"
 
-char *ft_strcpy(const char *src, int len)
-{
-    char *dest = malloc(len + 1);
-    if (!dest) {
-        perror("malloc");
-        return NULL;
-    }
-    memcpy(dest, src, len);
-    dest[len] = '\0';
-    return dest;
-}
-
-char *exp_env_var(t_shell *shell, const char *input)
-{
-    int i = 1; 
-    while (input[i] && (isalnum(input[i]) || input[i] == '_')) i++;
-    char *var_name = ft_strcpy(input + 1, i - 1);
-    if (!var_name) return NULL;
-    char *var_value = getenv_builtin(shell, var_name);
-    free(var_name);
-    if (!var_value) return ft_strdup("");
-    else return ft_strdup(var_value);
-}
-
 int parse_input(char *input, char **args, int *quotetype)
 {
     int i = 0, j = 0, start = -1, len = 0;
@@ -65,13 +41,6 @@ int parse_input(char *input, char **args, int *quotetype)
     }
     args[i] = NULL;
     return i;
-}
-
-t_shell *init_shell()
-{
-	t_shell *shell;
-	shell = ft_calloc(1, sizeof(t_shell));
-	return shell;
 }
 
 int main(int argc, char *argv[], char *env[])
@@ -146,4 +115,3 @@ int main(int argc, char *argv[], char *env[])
     }
     return 0;
 }
-
