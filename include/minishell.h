@@ -41,15 +41,44 @@ typedef struct s_shell
 	char	*oldpwd;
 }	t_shell;
 
+/* this is the linked list that is being given to me before the execution, the one 
+ * that I need to parse it takes, the name of the command, its list of arguments and a pointer to the next node.*/
+
+typedef struct	t_commands
+{
+	char	*name;
+	char	**args;
+	struct s_commands	*next;
+}	t_commands;
+
+typedef struct s_redir 
+{ 
+	char *filename;
+       	t_tokentype type; 
+	struct s_redir *next; 
+} 	t_redir;
+
+typedef struct s_cmd 
+{ 
+	char **ptr; 
+	t_redir *redirs; 
+	struct s_cmd *next; 
+} 	t_cmd;
+
+
+t_shell	*init_shell();
+
 /*parsing */
 int parse_input(char *input, char **args, int *quotetype);
 
 /*env variables*/
+char	**get_executable_path(t_shell *shell);
 char	*getenv_builtin(t_shell *shell, char* env_key);
 void	copy_envlist(t_shell *shell, char *env[]);
 void	update_pwd_env(t_shell *shell);
 void	update_old_pwd_env(t_shell *shell);
 
+char	*ft_strcpy_mohid(const char *src, int len);
 /* built-in */
 char	*get_env_home(char *env[]);
 int	echo_builtin(char **args);
@@ -58,6 +87,7 @@ int	env_builtin(char *arg, t_shell *shell);
 int	cd_builtin(char *arg, char *path, t_shell *shell);
 int	unset_builtin(t_shell *shell, char **arg);
 int	export_builtin(t_shell *shell, char *arg, char *var);
+char	*exp_env_var(t_shell *shell, const char *input);
 
 /* Lexer */
 t_token *new_token(char *value, t_tokentype type);

@@ -18,7 +18,7 @@ int parse_input(char *input, char **args, int *quotetype)
         {
             in_quotes = false;
             len = j - start;
-            args[i] = ft_strcpy(&input[start], len);
+            args[i] = ft_strcpy_mohid(&input[start], len);
             if (!args[i++]) exit(1);  
             if (quote_char == '\'') quotetype[i - 1] = 1;
             else quotetype[i - 1] = 2;
@@ -30,7 +30,7 @@ int parse_input(char *input, char **args, int *quotetype)
         else if ((c == ' ' || c == '\t' || c == '\0' || c == '\n') && start != -1)
         {
             int len = j - start;
-            args[i] = ft_strcpy(&input[start], len);
+            args[i] = ft_strcpy_mohid(&input[start], len);
             if (!args[i]) exit(1);
             quotetype[i] = 0;
             i++; 
