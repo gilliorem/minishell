@@ -70,6 +70,7 @@ char	*get_env_home(char **env)
 	}
 	return home;
 }
+
 /* helper to `grep` the PWD and OLD PWD */
 void	print_pwds(char **shell_env)
 {

@@ -58,8 +58,6 @@ char	**get_executable_path(t_shell *shell)
 // and pipe takes precderence on any reirection
 // can use access to check if it executable first
 
-
-
 /* So first we need to check if it's a builtin cmd
  * if it is, we call the builtin function without forking and
  * thats pretty much it.
@@ -69,17 +67,25 @@ char	**get_executable_path(t_shell *shell)
  * file and the redirection appends only in the child process. 
  * basically, we dont want to change parents fd. */
 
-int	is_builtin(char *cmd)
+int	execute_builtin(char **cmd, t_shell *shell)
 {
-	char	*cd_builtin;
-	char	*pwd_builtin;
-	char	*export_builtin;
-	char	*unset_builtin;
-	char	*getenv_builtin;
-	char	*echo_builtin;
-
-
+	if (ft_strncmp(cmd[0], "cd", 3) == 0)
+		return (cd_builtin(cmd[0], cmd[1], shell));
+	if (ft_strncmp(cmd[0], "pwd", 4) == 0)
+		return (pwd_builtin());
+	if (ft_strncmp(cmd[0], "echo", 5) == 0)
+		return (echo_builtin(cmd));
+	if (ft_strncmp(cmd[0], "unset", 6) == 0)
+		return (unset_builtin(shell, cmd));
+	if (ft_strncmp(cmd[0], "export", 7) == 0)
+		return (export_builtin(shell, cmd));
+	if (ft_strncmp(cmd[0], "env", 4) == 0)
+		return (env_builtin(cmd[0], shell));
+	if (ft_strncmp(cmd[0], "exit", 5) == 0)
+		return (exit_builtin());
+	return (0);
 }
+
 void	execute_builtin();
 void	execute_pipe();
 void	execute_redirin();

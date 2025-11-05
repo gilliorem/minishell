@@ -82,12 +82,13 @@ char	*ft_strcpy_mohid(const char *src, int len);
 /* built-in */
 char	*get_env_home(char *env[]);
 int	echo_builtin(char **args);
-void	pwd_builtin();
+int	pwd_builtin();
 int	env_builtin(char *arg, t_shell *shell);
 int	cd_builtin(char *arg, char *path, t_shell *shell);
 int	unset_builtin(t_shell *shell, char **arg);
-int	export_builtin(t_shell *shell, char *arg, char *var);
+int	export_builtin(t_shell *shell, char **arg);
 char	*exp_env_var(t_shell *shell, const char *input);
+int	exit_builtin();
 
 /* Lexer */
 t_token *new_token(char *value, t_tokentype type);
@@ -95,6 +96,10 @@ void    add_token_back(t_token **list, t_token *new_node);
 t_token *lexer(char *input);
 void    free_tokens(t_token *tokens);
 
+
+/* Executor */
+
+int	execute_builtin(char **cmd, t_shell *shell);
 
 /* debug helpers */
 void	print_pwds(char **shell_env);

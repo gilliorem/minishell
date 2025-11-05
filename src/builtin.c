@@ -83,11 +83,17 @@ int	echo_builtin(char **args)
 	return (1);
 }
 
-void	pwd_builtin()
+int	pwd_builtin()
 {
 	char buf[1096];
 	char *wd = getcwd(buf, sizeof(buf));
 	printf("%s\n",wd);
+	return (1);
+}
+
+int	exit_builtin()
+{
+	return (EXIT_SUCCESS);
 }
 
 int	env_builtin(char *arg, t_shell *shell)
@@ -154,34 +160,43 @@ int	cd_builtin(char *arg, char *path, t_shell *shell)
 // for the env variables. it is going to make things so much simpler
 // TODO: make a list of the env keys and the envs values (two separate lists)
 // meanwhile, I will perform a split.
-int	export_builtin(t_shell *shell, char *arg, char *var)
+
+int	export_builtin(t_shell *shell, char **arg)
 {
 	int	i;
-	char **var_values;
+	int	j;
+	char ***var_values;
 	char **env_values;
 
+	var_values = (char***)malloc(sizeof(char**));
 	i = 0;
-	if (ft_strncmp(arg, "export", 7) != 0)
+	if (ft_strncmp(arg[0], "export", 7) != 0)
 	{
 		return (0);
 	} 
-	var_values= ft_split(var, '=');
-	
+	while (arg[i])
+	{
+		var_values[i] = ft_split(arg[i], '=');
+		i++;
+	}
+	i = 0;
+	j = 0;
 	while (shell->env_list[i])
 	{
 		env_values = ft_split(shell->env_list[i], '=');
-		if (ft_strncmp(var_values[0], env_values[0], ft_strlen(env_values[0])) == 0)
+		if (ft_strncmp(var_values[j][0], env_values[0], ft_strlen(env_values[0])) == 0)
 		{
 			free(shell->env_list[i]);
 			shell->env_list[i] = NULL;
-			shell->env_list[i] = ft_strdup(var);
+			shell->env_list[i] = ft_strdup(arg[j]);
 			return (1);
 		}
 		i++;
+		j++;
 	}
 	if (shell->env_list[i] == NULL)
 	{
-		shell->env_list[i] = ft_strdup(var);
+		shell->env_list[i] = ft_strdup(arg[j]);
 		i++;
 		shell->env_list[i] = NULL;
 	}
