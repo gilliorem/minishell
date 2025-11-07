@@ -70,6 +70,7 @@ t_shell	*init_shell();
 
 /*parsing */
 int parse_input(char *input, char **args, int *quotetype);
+t_cmd *parser(t_token *token);
 
 /*env variables*/
 char	**get_executable_path(t_shell *shell);
@@ -100,13 +101,17 @@ void    free_tokens(t_token *tokens);
 /* Executor */
 
 char	**get_executable_path(t_shell *shell);
-int	execute_binary(t_shell *shell, char **argv);
+int	execute_binary(t_shell *shell, t_cmd *cmd);
 int	execute_simple_command(t_shell *shell, t_cmd *cmd);
-int	redirect(t_redir *redir);
-int	execute_pipeline(t_shell *shell, t_cmd *cmd);
+int	set_redirect(t_redir *redir);
+int	execute_pipe(t_shell *shell, t_cmd *cmd);
 
 int	execute_builtin(char **cmd, t_shell *shell);
 int	execute(t_shell *shell, t_cmd *cmd);
+
+/* Utils */
+int count_words(t_token *tok);
+void remove_quotes(t_cmd *cmd);
 
 /* debug helpers */
 void	print_pwds(char **shell_env);

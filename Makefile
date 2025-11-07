@@ -3,7 +3,7 @@ CC = gcc
 CFLAGS =  -Wall -Werror -Wextra
 SRC_DIR = src
 SRC = builtin.c envlist.c main.c expand.c utils.c free.c \
-      lexer.c executor.c
+      lexer.c executor.c parser.c
 OBJ = $(addprefix $(SRC_DIR)/,$(SRC:.c=.o))
 INCLUDES =  -Iinclude -Ilibft 
 LIBFT_DIR = libft

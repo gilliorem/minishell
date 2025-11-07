@@ -68,7 +68,7 @@ char	**get_executable_path(t_shell *shell)
 	return (path);
 }
 
-int	execute_binary(t_shell *shell, char **argv)
+int	execute_binary(t_shell *shell, t_cmd *cmd)
 {
 	char	**paths;
 	char	*full_path;
@@ -78,15 +78,18 @@ int	execute_binary(t_shell *shell, char **argv)
 	if (!paths)
 		return (127);
 	full_path = NULL;
-
 	for (int i = 0; paths[i]; i++)
 	{
 		full_path = ft_strjoin(paths[i], "/");
-		cmd_path = ft_strjoin(full_path, argv[0]);
+		cmd_path = ft_strjoin(full_path, cmd->ptr[0]);
+		//printf("%s\n", cmd_path);
+		//printf("%s\n", full_path);
 		free(full_path);
 		if (access(cmd_path, X_OK) == 0)
 		{
-			execve(cmd_path, argv, shell->env_list);
+			printf("argv[0]:%s, argv[1]:%s\n", cmd->ptr[0], cmd->ptr[1]);
+			execve(cmd_path, cmd->ptr, shell->env_list);
+			//     ls -a     "ls, -a, NULL"
 			perror("execve");
 			exit(127);
 		}
@@ -110,7 +113,6 @@ int	execute_binary(t_shell *shell, char **argv)
  * file and the redirection appends only in the child process. 
  * basically, we dont want to change parents fd. */
 
-
 int	execute_simple_command(t_shell *shell, t_cmd *cmd)
 {
 	int	pid;
@@ -119,13 +121,12 @@ int	execute_simple_command(t_shell *shell, t_cmd *cmd)
 	status = 0;
 	if (execute_builtin(cmd->ptr, shell))
 		return (0);
-
 	pid = fork();
 	if (pid == 0)
 	{
 		if (cmd->redirs)
-			redirect(cmd->redirs);
-		execute_binary(shell, cmd->ptr);
+			set_redirect(cmd->redirs);
+		execute_binary(shell, cmd);
 		perror("execve");
 		exit(127);
 	}
@@ -136,7 +137,7 @@ int	execute_simple_command(t_shell *shell, t_cmd *cmd)
 	return (WEXITSTATUS(status));
 }
 
-int	redirect(t_redir *redir)
+int	set_redirect(t_redir *redir)
 {
 	int	fd;
 
@@ -167,14 +168,13 @@ int	redirect(t_redir *redir)
 	return (0);
 }
 
-int	execute_pipeline(t_shell *shell, t_cmd *cmd)
+int	execute_pipe(t_shell *shell, t_cmd *cmd)
 {
 	int	fds[2];
 	int	fd_in;
-	int	pid;
+	pid_t	pid;
 
 	fd_in = STDIN_FILENO;
-
 	while (cmd)
 	{
 		pipe(fds);
@@ -183,13 +183,16 @@ int	execute_pipeline(t_shell *shell, t_cmd *cmd)
 		{
 			dup2(fd_in, STDIN_FILENO);
 			if (cmd->next)
+			{
+				printf("cmd next\n");
 				dup2(fds[1], STDOUT_FILENO);
+			}
 			close(fds[0]);
 			if (cmd->redirs)
-				redirect(cmd->redirs);
-			execute_binary(shell, cmd->ptr);
+				set_redirect(cmd->redirs);
+			execute_binary(shell, cmd);
 			perror("execve");
-			exit(127);
+			return (0);
 		}
 		else
 		{
@@ -208,7 +211,7 @@ int	execute(t_shell *shell, t_cmd *cmd)
 	if (!cmd)
 		return (0);
 	if (cmd->next)
-		return (execute_pipeline(shell, cmd));
+		return (execute_pipe(shell, cmd));
 	else
 		return (execute_simple_command(shell, cmd));
 	return (0);
