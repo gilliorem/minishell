@@ -99,7 +99,14 @@ void    free_tokens(t_token *tokens);
 
 /* Executor */
 
+char	**get_executable_path(t_shell *shell);
+int	execute_binary(t_shell *shell, char **argv);
+int	execute_simple_command(t_shell *shell, t_cmd *cmd);
+int	redirect(t_redir *redir);
+int	execute_pipeline(t_shell *shell, t_cmd *cmd);
+
 int	execute_builtin(char **cmd, t_shell *shell);
+int	execute(t_shell *shell, t_cmd *cmd);
 
 /* debug helpers */
 void	print_pwds(char **shell_env);

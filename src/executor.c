@@ -38,7 +38,25 @@
  * ptr[1] = -l
  * */
 
-//TODO: FREE
+int	execute_builtin(char **cmd, t_shell *shell)
+{
+	if (ft_strncmp(cmd[0], "cd", 3) == 0)
+		return (cd_builtin(cmd[0], cmd[1], shell));
+	if (ft_strncmp(cmd[0], "pwd", 4) == 0)
+		return (pwd_builtin());
+	if (ft_strncmp(cmd[0], "echo", 5) == 0)
+		return (echo_builtin(cmd));
+	if (ft_strncmp(cmd[0], "unset", 6) == 0)
+		return (unset_builtin(shell, cmd));
+	if (ft_strncmp(cmd[0], "export", 7) == 0)
+		return (export_builtin(shell, cmd));
+	if (ft_strncmp(cmd[0], "env", 4) == 0)
+		return (env_builtin(cmd[0], shell));
+	if (ft_strncmp(cmd[0], "exit", 5) == 0)
+		return (exit_builtin());
+	return (0);
+}
+
 char	**get_executable_path(t_shell *shell)
 {
 	char	*paths = getenv_builtin(shell, "PATH");
@@ -66,16 +84,14 @@ int	execute_binary(t_shell *shell, char **argv)
 		full_path = ft_strjoin(paths[i], "/");
 		cmd_path = ft_strjoin(full_path, argv[0]);
 		free(full_path);
-	}
-
-	if (access(cmd_path, X_OK) == 0)
-	{
-		execve(cmd_path, argv, shell->env_list);
-		perror("execve");
-		exit(127);
+		if (access(cmd_path, X_OK) == 0)
+		{
+			execve(cmd_path, argv, shell->env_list);
+			perror("execve");
+			exit(127);
+		}
 	}
 	free(cmd_path);
-
 	printf("cmd not found\n");
 	free(paths);
 	return (127);
@@ -94,43 +110,6 @@ int	execute_binary(t_shell *shell, char **argv)
  * file and the redirection appends only in the child process. 
  * basically, we dont want to change parents fd. */
 
-int	execute_builtin(char **cmd, t_shell *shell)
-{
-	if (ft_strncmp(cmd[0], "cd", 3) == 0)
-		return (cd_builtin(cmd[0], cmd[1], shell));
-	if (ft_strncmp(cmd[0], "pwd", 4) == 0)
-		return (pwd_builtin());
-	if (ft_strncmp(cmd[0], "echo", 5) == 0)
-		return (echo_builtin(cmd));
-	if (ft_strncmp(cmd[0], "unset", 6) == 0)
-		return (unset_builtin(shell, cmd));
-	if (ft_strncmp(cmd[0], "export", 7) == 0)
-		return (export_builtin(shell, cmd));
-	if (ft_strncmp(cmd[0], "env", 4) == 0)
-		return (env_builtin(cmd[0], shell));
-	if (ft_strncmp(cmd[0], "exit", 5) == 0)
-		return (exit_builtin());
-	return (0);
-}
-
-int	execute(t_shell *shell, t_cmd *cmd);
-
-int	execute_builtins(t_shell *shell, t_cmd *cmd);
-int	execute_simple_command(t_shell *shell, t_cmd *cmd);
-int	execute_pipeline(t_shell *shell, t_cmd *cmd);
-int	execute_redir(t_shell *shell, t_cmd *cmd);
-
-
-int	execute(t_shell *shell, t_cmd *cmd)
-{
-	if (!cmd)
-		return (0);
-	if (cmd->next)
-		return (execute_pipeline(shell, cmd));
-	else
-		return (execute_simple_command(shell, cmd));
-	return (0);
-}
 
 int	execute_simple_command(t_shell *shell, t_cmd *cmd)
 {
@@ -146,7 +125,7 @@ int	execute_simple_command(t_shell *shell, t_cmd *cmd)
 	{
 		if (cmd->redirs)
 			redirect(cmd->redirs);
-		execvp(cmd->ptr[0], cmd->ptr);
+		execute_binary(shell, cmd->ptr);
 		perror("execve");
 		exit(127);
 	}
@@ -208,7 +187,7 @@ int	execute_pipeline(t_shell *shell, t_cmd *cmd)
 			close(fds[0]);
 			if (cmd->redirs)
 				redirect(cmd->redirs);
-			execvp(cmd->ptr[0], cmd->ptr);
+			execute_binary(shell, cmd->ptr);
 			perror("execve");
 			exit(127);
 		}
@@ -221,6 +200,17 @@ int	execute_pipeline(t_shell *shell, t_cmd *cmd)
 			cmd = cmd->next;
 		}
 	}
+	return (0);
+}
+
+int	execute(t_shell *shell, t_cmd *cmd)
+{
+	if (!cmd)
+		return (0);
+	if (cmd->next)
+		return (execute_pipeline(shell, cmd));
+	else
+		return (execute_simple_command(shell, cmd));
 	return (0);
 }
 
