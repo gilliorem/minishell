@@ -7,7 +7,9 @@
  * my job is to execute this command. 
  * but wait, if I have ls -l | wc -l, I have 2 cmds. I will already know that
  * I have two cmds. So the same command will be called twice ?
- * the forking part is in the executor,
+ * the forking part is in the executor, the piping and the forking append for different reason
+ * the forking happens each time there is a simple command, the piping happens when there is
+ * this `|`.
  * what if there is only one cmd ? the execute part doest not execute differently,
  * still,  I need to fork in the execution part since, we are forking at each new command.
  * I think the executor does not go through the parser, it just goes through the list of commands ?
@@ -20,9 +22,6 @@
  *
  * ok so for now it is the executor's responsability to check for redirection element,
  * like a file and skip it.
- * 
- * in my understanding the executor just run cmd thats it.
- * goes through the list of parsed cmds and them accordingly, and then we redirect...
  *
  * !!! so the executor will look a lot like the lexer. 
  * because it will do different execution part based on the token type.
@@ -42,20 +41,48 @@
 //TODO: FREE
 char	**get_executable_path(t_shell *shell)
 {
-	char	*env_values = getenv_builtin(shell, "PATH");
-	char	**env_value = ft_split(env_values, ':');
-	char	**executable = (char**)malloc(sizeof(char*));
+	char	*paths = getenv_builtin(shell, "PATH");
+	if (!paths)
+		return (NULL);
+	char	**path = ft_split(paths, ':');
+	if (!path)
+		return (NULL);
+	return (path);
+}
 
-	for (int i = 0; env_value[i]; i++)
+int	execute_binary(t_shell *shell, char **argv)
+{
+	char	**paths;
+	char	*full_path;
+	char	*cmd_path;
+	
+	paths = get_executable_path(shell);
+	if (!paths)
+		return (127);
+	full_path = NULL;
+
+	for (int i = 0; paths[i]; i++)
 	{
-		executable[i] = ft_strjoin(env_value[i], "/");
-		printf("%s\n",executable[i]);
+		full_path = ft_strjoin(paths[i], "/");
+		cmd_path = ft_strjoin(full_path, argv[0]);
+		free(full_path);
 	}
-	return (executable);
+
+	if (access(cmd_path, X_OK) == 0)
+	{
+		execve(cmd_path, argv, shell->env_list);
+		perror("execve");
+		exit(127);
+	}
+	free(cmd_path);
+
+	printf("cmd not found\n");
+	free(paths);
+	return (127);
 }
 
 // more than one cmd -> we pipe
-// and pipe takes precderence on any reirection
+// and pipe goes first before any redirection
 // can use access to check if it executable first
 
 /* So first we need to check if it's a builtin cmd
@@ -86,26 +113,115 @@ int	execute_builtin(char **cmd, t_shell *shell)
 	return (0);
 }
 
-void	execute_builtin();
-void	execute_pipe();
-void	execute_redirin();
-void	execute_redirout();
-void	execute_heredoc();
-void	execute_append();
+int	execute(t_shell *shell, t_cmd *cmd);
+
+int	execute_builtins(t_shell *shell, t_cmd *cmd);
+int	execute_simple_command(t_shell *shell, t_cmd *cmd);
+int	execute_pipeline(t_shell *shell, t_cmd *cmd);
+int	execute_redir(t_shell *shell, t_cmd *cmd);
 
 
-int	execute(t_shell *shell, t_cmd **cmd_list)
+int	execute(t_shell *shell, t_cmd *cmd)
 {
-	int	child = -1;
-	char	**path = get_executable_path(shell);
-	while (*cmd_list != NULL)
-	{
-		// check for built ins
-		child = fork();
-		execve(path, *cmd_list->ptr, shell->env_list);
-		*cmd_list = *cmd_list->next;
-	}		
+	if (!cmd)
+		return (0);
+	if (cmd->next)
+		return (execute_pipeline(shell, cmd));
+	else
+		return (execute_simple_command(shell, cmd));
+	return (0);
 }
 
+int	execute_simple_command(t_shell *shell, t_cmd *cmd)
+{
+	int	pid;
+	int	status;
 
-/* in case of a heredocs, I need to to do some kind of filter - reading from the stdin and have a delimiter*/
+	status = 0;
+	if (execute_builtin(cmd->ptr, shell))
+		return (0);
+
+	pid = fork();
+	if (pid == 0)
+	{
+		if (cmd->redirs)
+			redirect(cmd->redirs);
+		execvp(cmd->ptr[0], cmd->ptr);
+		perror("execve");
+		exit(127);
+	}
+	else if (pid < 0)
+		perror("fork error");
+	else
+		waitpid(pid, &status, 0);
+	return (WEXITSTATUS(status));
+}
+
+int	redirect(t_redir *redir)
+{
+	int	fd;
+
+	while (redir)
+	{
+		if (redir->type == TOKEN_REDIR_IN)
+		{
+			fd = open(redir->filename, O_RDONLY);
+			dup2(fd, STDIN_FILENO);
+			close(fd);
+		}
+		else if (redir->type == TOKEN_REDIR_OUT)
+		{
+			fd = open(redir->filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+			dup2(fd, STDOUT_FILENO);
+			close(fd);
+		}
+		else if (redir->type == TOKEN_REDIR_APPEND)
+		{
+			fd = open(redir->filename, O_WRONLY | O_CREAT | O_APPEND, 0644);
+			dup2(fd, STDOUT_FILENO);
+			close(fd);
+		}
+		else if (redir->type == TOKEN_HEREDOC)
+			printf("heredox\n");
+		redir = redir->next;
+	}
+	return (0);
+}
+
+int	execute_pipeline(t_shell *shell, t_cmd *cmd)
+{
+	int	fds[2];
+	int	fd_in;
+	int	pid;
+
+	fd_in = STDIN_FILENO;
+
+	while (cmd)
+	{
+		pipe(fds);
+		pid = fork();
+		if (pid == 0)
+		{
+			dup2(fd_in, STDIN_FILENO);
+			if (cmd->next)
+				dup2(fds[1], STDOUT_FILENO);
+			close(fds[0]);
+			if (cmd->redirs)
+				redirect(cmd->redirs);
+			execvp(cmd->ptr[0], cmd->ptr);
+			perror("execve");
+			exit(127);
+		}
+		else
+		{
+			close(fds[1]);
+			if (fd_in != STDIN_FILENO)
+				close(fd_in);
+			fd_in = fds[0];
+			cmd = cmd->next;
+		}
+	}
+	return (0);
+}
+
+/* in case of a heredocs, I need to to do some kind of filter - reading from the stdin and have a delimiter (the second argument)*/
