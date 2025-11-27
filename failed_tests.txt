@@ -1,0 +1,12 @@
+Failed tests
+$?
+cd ~ [X]
+cd -
+update the $PWD [X]
+update the $OLDPWD [X]
+export a=1 b=2
+unset a b
+cat <<HERE <<DOC
+cat <<HERE (Inside $USER should be expanded)
+cat <minishell.c <<HERE | cat
+cat << $

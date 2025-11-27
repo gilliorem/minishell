@@ -1,29 +1,5 @@
 #include "../include/minishell.h"
 
-
-/* Even if this is not asked, we are
- * going to need our own getenv function.
- * in order to properly handle the cases
- * like echo $USER - unset USER - echo $USER.
- * because right now getenv function depends
- * on the original env list, we need to pass
- * our own copy of the list as an new arg. */
-
-/* we will go through our own env list
- * 	look if the var name match the env_var_name
- * 	if it does, we return that value
- * 	else we return NULL
- */
-
-/* I think I do need to split the list like I did in unset*/
-// if the env_key match with the env_key list, then return it
-//
-// char *home = getenv(HOME)
-// first we check if HOME is a key in our shellenvlist
-// >>		/home/regillio
-// si ca match
-// we want to get the value at this key
-
 char	*getenv_builtin(t_shell *shell, char* env_key)
 {
 	int	i;
@@ -139,28 +115,6 @@ int	cd_builtin(char *arg, char *path, t_shell *shell)
 	return (1);
 }
 
-//TODO so export with no argument list the env list and sort them in different order that env does. 
-//it looks that it is alphabetical order but special characters are at the end.
-//I wonder how env sorts it by default
-//
-//
-//if the variable already exist, I need to overwrite it instead of adding a new one.
-//need to upgrade the logic and actually check for the value of var
-//in the case of overwriting it.
-
-// char *var = REMI=BG
-// var_values[0] = REMI
-// var_values[1] = BG <<< overwrite this one.
-// we find the var value.
-// we compare it with the other var value
-// or we can check if it is in env_list[i]
-// if it is, we just re write the whole line.
-//
-// I need to have a list of the keys and a list the values
-// for the env variables. it is going to make things so much simpler
-// TODO: make a list of the env keys and the envs values (two separate lists)
-// meanwhile, I will perform a split.
-
 int	export_builtin(t_shell *shell, char **arg)
 {
 	int	i;
@@ -204,8 +158,9 @@ int	export_builtin(t_shell *shell, char **arg)
 }
 
 // TODO: Replace the char *arg with shell->arg
-// we also need a function that count the numbers of args/words the user pass an input 
+// we also need a function that count the numbers of args/words the user pass an input
 // need a "global function" that will run all our builtins.
+
 int	unset_builtin(t_shell *shell, char **args)
 {
 	int	i;
