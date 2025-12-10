@@ -23,6 +23,17 @@
   >$ $spaces ls $spaces
   a.out minishell.c
 
+  * export VAR_A=TEST_A 	: will populate the env list 
+  * export VAR_B		: will *not* populate the env_list
+  * export VAR_B=		: will populate the env_list
+  * export VAR_C="TEST_C"	: will populate the env_list with `VAR_C=C_VAL`
+  * export VAR
+  *
+  * export		will log VAR_B
+  * env			will not log VAR_B
+  *
+  * export		will log VAR_A & VAR_B
+
  * Expansion with echo
   echo "'$USER'"
   >$ 'regillio'
@@ -136,8 +147,10 @@
 // cat <<HERE (Inside $USER should be expanded)
 // cat <minishell.c <<HERE | cat
 // cat << $
+//
+//
+// the way to handle signal: use tuned function and sigaction to be able to have different parameter in my handler- use a struct with sigaction type
 
-#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -149,6 +162,9 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <fcntl.h>
+#include <signal.h>
+
+
 
 typedef enum e_tokentype { TOKEN_WORD, TOKEN_PIPE, TOKEN_REDIR_IN, TOKEN_REDIR_OUT, TOKEN_REDIR_APPEND, TOKEN_HEREDOC } t_tokentype;
 typedef struct s_token { char *value; t_tokentype type; struct s_token *next; } t_token;
@@ -161,9 +177,38 @@ int g_in_child = 0;
 int g_exit_status = 0;
 
 void handle_sigint(int sig)
-{ (void)sig; g_exit_status = 128 + sig; if (g_in_child == 0) { write(1, "\n", 1); rl_on_new_line(); rl_replace_line("", 0); rl_redisplay(); } else { write(1, "\n", 1); } }
+{ 
+ 	g_exit_status = 128 + sig;
+	write(1, "\n", 1);
+	rl_on_new_line();
+	rl_replace_line("", 0);
+	rl_redisplay();
+} 
+/*
+void advanced_handle_sigint(int sig, siginfo_t *info, void *ctx)
+{
+ 	g_exit_status = 128 + sig;
+	write(1, "\n", 1);
+	rl_on_new_line();
+	rl_replace_line("", 0);
+	rl_redisplay();
 
-// finally fix the sig and exit status
+	return;	
+}
+*/
+
+/*
+init_signal(void)
+{
+	struct sigaction sa;
+
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = SA_SIGINFO;
+
+	sa.sa_sigaction = advanced_handle_sigint;
+	sigaction(SIGINT, &sa, NULL);
+}
+*/
 
 void handle_sigquit(int sig)
 {
@@ -211,10 +256,39 @@ t_env *init_environment(char **envp) { t_env *head = NULL; t_env *tail = NULL; i
 // returns a copy of the env value when the key match.
 char *get_env_val(t_env *env, char *key) { while (env) { if (strcmp(env->key, key) == 0) return ft_strdup(env->value); env = env->next; } return NULL; }
  
-char **env_list_to_tab(t_env *env) { int count = 0; t_env *tmp = env; while (tmp) { count++; tmp = tmp->next; } char **tab = malloc(sizeof(char *) * (count + 1)); int i = 0; tmp = env; while (tmp) { char *temp = ft_strjoin(tmp->key, "="); tab[i++] = ft_strjoin(temp, tmp->value); free(temp); tmp = tmp->next; } tab[i] = NULL; return tab; }
+char **env_list_to_tab(t_env *env) 
+{ 
+	int count = 0;
+       	t_env *tmp = env;
+       	while (tmp) 
+	{
+	       	count++;
+	       	tmp = tmp->next;
+       	}
+       	char **tab = malloc(sizeof(char *) * (count + 1));
+       	int i = 0;
+       	tmp = env;
+       	while (tmp) 
+	{
+	       	char *temp = ft_strjoin(tmp->key, "=");
+	       	tab[i++] = ft_strjoin(temp, tmp->value);
+	       	free(temp);
+	       	tmp = tmp->next;
+       	} 
+	tab[i] = NULL;
+       	return tab;
+}
 
 /* now stop comparing ? with env value since we move out of the env list */
-void ft_env(t_env *env) { while (env) { if (env->value) printf("%s=%s\n", env->key, env->value); env = env->next; } }
+void ft_env(t_env *env) 
+{
+       	while (env)
+       	{
+	       	if (strcmp(env->value, "") != 0) 
+			printf("%s=%s\n", env->key, env->value);
+	       	env = env->next;
+       	}
+}
 
 // if the key match, replace the old env value with a new one.
 int update_env(t_env *env, char *key, char *new_value) { while (env) { if (strcmp(env->key, key) == 0) { free(env->value); env->value = ft_strdup(new_value); return 1; } env = env->next; } return 0; }
@@ -244,7 +318,6 @@ void ft_exit(t_cmd *cmd)
 {
 	int	exit_code;
 
-	exit_code = atoi(cmd->argv[1]);
 	printf("exit\n");
 	if (!cmd->argv[1])
 		exit (g_exit_status);
@@ -258,6 +331,7 @@ void ft_exit(t_cmd *cmd)
 		printf("minishell: exit: too many arugments\n");
 		return ;
 	}
+	exit_code = atoi(cmd->argv[1]);
 	exit (exit_code % 256);
 }
 
@@ -285,11 +359,54 @@ int ft_isdigit(int c) { if (c >= '0' && c <= '9') return (1); return (0); }
 
 int check_key(char *key) { int i; i = 0; while (key[i]) { if (ft_isdigit(key[i])) { i++; continue; } if (ft_isalpha_underscore(key[i]) == 0) { printf("minishell: export: '%s': not a valid identifier\n", key); return (0); } i++; } return (1); }
 
-void print_env_list(t_env **env_head) { t_env *tmp = *env_head; while (tmp->next != NULL) { printf("declare -x %s=\"%s\"\n", tmp->key, tmp->value); tmp = tmp->next; } }
+void print_env_list(t_env **env_head) 
+{
+       	t_env *tmp = *env_head;
+       	while (tmp)
+       	{
+		if (strcmp(tmp->value, "") == 0)
+			printf("declare -x %s=\"\"\n", tmp->key);
+//		else
+//			printf("declare -x %s=\"%s\"\n", tmp->key, tmp->value);
+	       	tmp = tmp->next;
+       	}
+}
 
 int check_first_char (char c) { if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c == '_')) return (1); return (0); }
 
-/* Now handle special characters in the key value */
+/* currently working on variable that has no value: should be added to export list but not to the env list */
+
+
+void addback(t_env **head, t_env *new)
+{
+	if (!*head)
+		*head = new;
+
+	t_env *current = *head;
+	current = *head;
+	while (current->next)
+		current = current->next;
+	current->next = new;
+}
+
+void    addfront(t_env **lst, t_env *new)
+{
+        t_env  *temp;
+
+        temp = new;
+        if (*lst)
+        {
+                new->next = *lst;
+                *lst = new;
+        }
+        else
+        {
+                *lst = new;
+                new->next = NULL;
+        }
+}
+
+
 int ft_export(t_cmd *cmd, t_env **env_head) 
 {
 	if (!cmd->argv[1])
@@ -299,15 +416,51 @@ int ft_export(t_cmd *cmd, t_env **env_head)
 		char *arg = cmd->argv[i];
 	       	if (check_first_char(arg[0]) == 0)
 		{
-		       	printf("minishell: export: '%s' not a valid identifier\n", arg); return (1); 
+		       	printf("minishell: export: '%s' not a valid identifier\n", arg);
+		       	return (1); 
 		}
 		char *eq_pos = strchr(arg, '=');
-		if (!eq_pos) { if (!check_key(arg)) return (0); }
-		if (eq_pos) { char *key = ft_substr(arg, 0, eq_pos - arg);
-			if (!check_key(key)) return (0);
+		if (!eq_pos) 
+		{
+		       	if (!check_key(arg))
+			       	return (0); 
+			char *key = ft_substr(arg, 0, ft_strlen(arg));
+			t_env *no_value_node = new_env_node(key, ft_strdup(""));
+			if (!*env_head)
+				*env_head = no_value_node;
+			else 
+			{
+				t_env *tmp = *env_head;
+				while (tmp->next)
+					tmp = tmp->next;
+				tmp->next = no_value_node;
+			}
+			printf("node added.\n");
+		}
+		if (eq_pos) 
+		{
+		       	char *key = ft_substr(arg, 0, eq_pos - arg);
+			if (!check_key(key))
+			       	return (0);
 			char *value = eq_pos + 1;
-			if (!update_env(*env_head, key, value)) { t_env *new_node = new_env_node(key, ft_strdup(value)); if (!*env_head) *env_head = new_node; else { t_env *tmp = *env_head; while (tmp->next) tmp = tmp->next; tmp->next = new_node; } } 
-			else free(key); } } return (0);
+			if (!update_env(*env_head, key, value))
+		       	{
+			       	t_env *new_node = new_env_node(key, ft_strdup(value));
+			       	if (!*env_head)
+				       	*env_head = new_node;
+			       	else 
+				{
+				       	t_env *tmp = *env_head;
+				       	while (tmp->next)
+					       	tmp = tmp->next;
+				       	tmp->next = new_node;
+			       	}
+		       	} 
+			else 
+				free(key);
+	       	}
+       	}
+      	return (0);
 }
 
 int	ft_unset(t_cmd *cmd, t_env **env_head) 
@@ -496,8 +649,6 @@ void close_unused_heredoc_fds(t_cmd *cmd_list, t_cmd *current_cmd)
 	}
 }
 
-/* now runs the exit builtin */
-
 void executor(t_cmd *cmd_list, t_env *env)
 {
 	int pipe_fd[2]; 
@@ -509,7 +660,11 @@ void executor(t_cmd *cmd_list, t_env *env)
 		{
 			ft_exit(cmd_list);
 		} 
-		else if (strcmp(cmd->argv[0], "export") == 0){g_exit_status = ft_export(cmd, &env);return;}
+		else if (strcmp(cmd->argv[0], "export") == 0)
+		{
+			g_exit_status = ft_export(cmd, &env);
+			return;
+		}
 		else if (strcmp(cmd->argv[0], "unset") == 0) { g_exit_status = ft_unset(cmd, &env);  return; }
 		else if (strcmp(cmd->argv[0], "cd") == 0) { g_exit_status = ft_cd(cmd, env);  return; }
 	}
@@ -522,7 +677,7 @@ void executor(t_cmd *cmd_list, t_env *env)
 		if (last_pid == -1) { perror("fork"); return; }
 
 		if (last_pid == 0) { 
-			signal(SIGINT, handle_sigint);
+			signal(SIGINT, SIG_DFL);
 			signal(SIGQUIT, SIG_DFL);
 			close_unused_heredoc_fds(cmd_list, cmd);
 			if (prev_fd != -1) { dup2(prev_fd, 0); close(prev_fd); }
@@ -564,7 +719,10 @@ void executor(t_cmd *cmd_list, t_env *env)
 			perror(cmd->argv[0]); 
 			exit(127);
 		}
-		else {
+		else 
+		{
+//			sigaction(SIGINT, &advanced_handle_sigint, NULL);
+			//sigaction(SIGQUIT, &handle_sigquit, NULL);
 			if (prev_fd != -1) close(prev_fd);
 			if (cmd->next) { close(pipe_fd[1]); prev_fd = pipe_fd[0]; }
 			cmd = cmd->next;
@@ -578,7 +736,13 @@ void executor(t_cmd *cmd_list, t_env *env)
 		if (wpid == last_pid)
 		{
 			if (WIFEXITED(status))
+			{
 				g_exit_status = WEXITSTATUS(status);
+			}
+			if (WTERMSIG(status))
+			{
+				g_exit_status = WTERMSIG(status) + 128;
+			}
 		}
 	}
 }
@@ -609,11 +773,13 @@ int main(int argc, char **argv, char **envp)
 	increment_shelvl(&env_list);
 	char *input;
 
-	signal(SIGINT, handle_sigint);  
-	signal(SIGQUIT, handle_sigquit);       
+	//signal(SIGINT, handle_sigint);  
+	//signal(SIGQUIT, handle_sigquit);       
+	
+	
 
 	while (1) {
-		g_in_child = 0;
+		//g_in_child = 0;
 		input = readline("MOGILLIO> ");
 		if (!input) { printf("exit\n"); break; }
 		if (!*input) { free(input); continue; }
@@ -628,7 +794,7 @@ int main(int argc, char **argv, char **envp)
 		remove_quotes(cmds);
 		handle_heredocs(cmds); 
 
-		g_in_child = 1;
+		//g_in_child = 1;
 
 		executor(cmds, env_list);
 

@@ -8,7 +8,7 @@
  bash: exit: 9223372036854775808: numeric argument required
  can use string compare: if the string value is more than long long int limit, print the error.
 
- * exit with no arguments does not overwrite the last exit status [X]
+ * exit with no arguments does not overwrite the last exit status
   catch the exit status of ^C
   >$ echo ^C
   >$ exit
@@ -66,7 +66,7 @@
   >>>readline suppression (valgrind file; not take into account readline leaks) [X]
 
   EXIT STATUS
- *Thoughts: Need a global variable that keeps track of our exit code... and we try to get read of g_inchild*
+ *Thoughts: Need a global variable that keeps track of our exit code... and we try to get read of g_in_child*
  $? ON CONTROL C []
  -$?
  ctrl c
@@ -155,29 +155,25 @@ typedef struct s_token { char *value; t_tokentype type; struct s_token *next; } 
 typedef struct s_redir { char *filename; t_tokentype type; int heredoc_fd; struct s_redir *next; } t_redir;
 typedef struct s_cmd { char **argv; t_redir *redirections; struct s_cmd *next; } t_cmd;
 typedef struct s_env { char *key; char *value; size_t exit_status; struct s_env *next; } t_env;
-
+void free_cmd_list(t_cmd *c);
 int g_in_child = 0; 
-// add a global variable for exit status
 int g_exit_status = 0;
 
 void handle_sigint(int sig)
-{ (void)sig; g_exit_status = 128 + sig; if (g_in_child == 0) { write(1, "\n", 1); rl_on_new_line(); rl_replace_line("", 0); rl_redisplay(); } else { write(1, "\n", 1); } }
-
-// finally fix the sig and exit status
-
-void handle_sigquit(int sig)
-{
-	(void) sig;
-	if (g_in_child == 0)
+{ 
+	(void)sig;
+	g_exit_status = 128 + sig;
+       	if (g_in_child == 0) 
 	{
-		rl_on_new_line();
-		rl_replace_line("  ", 0);
-		rl_redisplay();
-	}
-	if (g_in_child == 1)
-	{
-		g_exit_status = 128 + sig;
-		printf("Quit (core dumped)\n");
+	       	write(1, "\n", 1);
+		printf("sig:%d\n", sig);
+	       	rl_on_new_line();
+	       	rl_replace_line("", 0);
+	       	rl_redisplay();
+	} 
+	else
+       	{
+	       	write(1, "\n", 1);
 	}
 }
 
@@ -240,26 +236,103 @@ int ft_cd(t_cmd *cmd, t_env *env)
 /* add-on helper */
 int	is_number(char *s) { int	i; i = 0; while (s[i]) { if (s[0] == '-' || s[0] == '+') i++; if (s[i] < '0' || s[i] > '9') return (0); i++; } return (1); }
 
+// still needs to handle the case where there is no argument (carry the last cmd exit code) 
+
 void ft_exit(t_cmd *cmd)
 {
-	int	exit_code;
+	int i = 0;
+	for (i = 0; cmd->argv[i]; i++);
 
-	exit_code = atoi(cmd->argv[1]);
-	printf("exit\n");
-	if (!cmd->argv[1])
+	if (strcmp(cmd->argv[0], "exit") == 0)
+	{
 		exit (g_exit_status);
-	if (!is_number(cmd->argv[1]))
-	{
-		printf("minishell: exit: %s: numeric argument required\n", cmd->argv[1]);
-		exit (2);
 	}
-	if (cmd->argv[2])
+
+	int j = 0;
+	while (cmd->argv[1][j])
 	{
-		printf("minishell: exit: too many arugments\n");
+		if (cmd->argv[1][j] < '0' || cmd->argv[1][j] > '9')
+		{
+			printf("exit: error: numeric argument required\n");
+			exit (2);
+		}
+	}
+	if (i > 1)
+	{
+		printf("exit: error: too many arugument\n");
 		return ;
 	}
-	exit (exit_code % 256);
+	if (cmd->argv[1])
+	{
+		int exit_code = atoi(cmd->argv[1]);
+		if (exit_code > 256)
+			exit_code %= 256;
+		exit(exit_code);
+	}
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+void	ft_exit(t_cmd *cmd, t_env *env)
+{
+	int i = 0;
+	int exit_status = 0;
+	while (cmd->argv[i])
+	{
+		if (i > 1) // only in this case, the shell does not exit. and will update the exitstatus
+		{
+			printf("minishell: exit: too many arguments\n");
+			return ;
+		}
+		if (!cmd->argv[1])
+		{
+			printf("exiting with g_exit_status:%d\n", g_exit_status);
+			free_cmd_list(cmd);
+			exit(g_exit_status);
+		}
+		if (!is_number(cmd->argv[1]))
+		{
+			printf("minishell: exit: %s: numeric argument required\n", cmd->argv[1]);
+			free_cmd_list(cmd);
+			exit (2);
+		}
+		else
+		{
+			exit_status = atoi(cmd->argv[1]);
+			if (exit_status >= 256)
+				exit_status = exit_status % 256;
+			free_cmd_list(cmd);
+			exit(exit_status);
+		}
+		i++;
+	}
+}
+*/
 
 /* now check if can write */
 /* now echo handles multiple `-n` */
@@ -292,15 +365,10 @@ int check_first_char (char c) { if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 
 /* Now handle special characters in the key value */
 int ft_export(t_cmd *cmd, t_env **env_head) 
 {
-	if (!cmd->argv[1])
-	       	print_env_list(env_head);
+	if (!cmd->argv[1]) print_env_list(env_head);
 	for (int i = 1; cmd->argv[i]; i++)
-	{ 
-		char *arg = cmd->argv[i];
-	       	if (check_first_char(arg[0]) == 0)
-		{
-		       	printf("minishell: export: '%s' not a valid identifier\n", arg); return (1); 
-		}
+	{ char *arg = cmd->argv[i]; if (check_first_char(arg[0]) == 0)
+		{ printf("minishell: export: '%s' not a valid identifier\n", arg); return (1); }
 		char *eq_pos = strchr(arg, '=');
 		if (!eq_pos) { if (!check_key(arg)) return (0); }
 		if (eq_pos) { char *key = ft_substr(arg, 0, eq_pos - arg);
@@ -375,25 +443,48 @@ t_cmd *parser(t_token *tok) {
 
 
 char *get_env_val_wrapper(char *key, t_env *env) { char *v=get_env_val(env, key); return v ? v : ft_strdup(""); }
-char *expand_str(char *s, t_env *env) {
-	char *res=ft_strdup(""); int i=0;
-	while(s[i]) {
-		if(s[i]=='\'') { 
-			i++; int st=i; while(s[i]&&s[i]!='\'') i++; char *sub=ft_substr(s,st,i-st); char *t=ft_strjoin(res,sub); free(res); free(sub); res=t; if(s[i])i++; 
+char *expand_str(char *s, t_env *env) 
+{
+	char *res=ft_strdup("");
+       	int i=0;
+	while(s[i]) 
+	{
+		if(s[i]=='\'') 
+		{ 
+			i++;
+		       	int st=i;
+		       	while(s[i]&&s[i]!='\'') 
+				i++;
+		       	char *sub=ft_substr(s,st,i-st);
+		       	char *t=ft_strjoin(res,sub);
+		       	free(res);
+		       	free(sub);
+		       	res=t;
+		       	if(s[i])
+				i++; 
 		}
-		else if(s[i]=='$') { 
+		else if(s[i]=='$')
+	       	{ 
 			i++;
 			int st=i;
-			if (s[i] == '?') {
+			if (s[i] == '?') 
+			{
 				i++;
-			} else {
-				while(isalnum(s[i])||s[i]=='_') i++; 
+			} else 
+			{
+				while
+					(isalnum(s[i])||s[i]=='_') 
+						i++; 
 			}
 			char *k=ft_substr(s,st,i-st); 
 			char *v;
 			if (k[0] == '?' && k[1] == '\0')
-				v = ft_itoa(g_exit_status);
-				//v = ft_itoa(env->exit_status);
+			{
+				v = ft_itoa(env->exit_status);
+				printf("v:%s\n", v);
+				printf("%d\n", g_exit_status);
+
+			}
 			else
 				v=get_env_val_wrapper(k,env); 
 			free(k); char *t=ft_strjoin(res,v); free(res); free(v); res=t; 
@@ -503,7 +594,6 @@ void executor(t_cmd *cmd_list, t_env *env)
 	int pipe_fd[2]; 
 	int prev_fd = -1; 
 	t_cmd *cmd = cmd_list;
-
 	if (cmd && !cmd->next && cmd->argv && cmd->argv[0]) {
 		if (strcmp(cmd->argv[0], "exit") == 0) 
 		{
@@ -511,16 +601,13 @@ void executor(t_cmd *cmd_list, t_env *env)
 		} 
 		else if (strcmp(cmd->argv[0], "export") == 0){g_exit_status = ft_export(cmd, &env);return;}
 		else if (strcmp(cmd->argv[0], "unset") == 0) { g_exit_status = ft_unset(cmd, &env);  return; }
-		else if (strcmp(cmd->argv[0], "cd") == 0) { g_exit_status = ft_cd(cmd, env);  return; }
+		else if (strcmp(cmd->argv[0], "cd") == 0) { g_exit_status = ft_cd(cmd, env); return; }
 	}
-
 	pid_t last_pid = 0;
-
 	while (cmd) {
 		if (cmd->next) pipe(pipe_fd);
 		last_pid = fork();
 		if (last_pid == -1) { perror("fork"); return; }
-
 		if (last_pid == 0) { 
 			signal(SIGINT, handle_sigint);
 			signal(SIGQUIT, SIG_DFL);
@@ -557,28 +644,38 @@ void executor(t_cmd *cmd_list, t_env *env)
 			else if (strcmp(cmd->argv[0], "echo") == 0) { ft_echo(cmd); exit(0); }
 
 			char *path = get_command_path(cmd->argv[0], env);
-			if (!path) { write(2, "minishell: command not found\n", 29); exit(127); }
-
+			if (!path) {
+				g_exit_status = 127;
+				write(2, "minishell: command not found\n", 29); exit(g_exit_status); 
+			}
 			char **env_arr = env_list_to_tab(env);
 			execve(path, cmd->argv, env_arr);
 			perror(cmd->argv[0]); 
-			exit(127);
+			exit(g_exit_status);
 		}
-		else {
+		else
+	       	{
 			if (prev_fd != -1) close(prev_fd);
 			if (cmd->next) { close(pipe_fd[1]); prev_fd = pipe_fd[0]; }
 			cmd = cmd->next;
 		}
 	}
-
 	int status;
 	pid_t wpid;
-	while ((wpid = wait(&status)) > 0)
+	while (((wpid = wait(&status)) > 0))
 	{
 		if (wpid == last_pid)
 		{
 			if (WIFEXITED(status))
-				g_exit_status = WEXITSTATUS(status);
+			{
+				printf("child process terminated. back to parent\n");
+				g_exit_status = WEXITSTATUS(g_exit_status);
+			}
+			else if (WIFSIGNALED(status))
+			{
+				printf("child process interupted by a signal\n");
+				g_exit_status = 128 + WTERMSIG(status);
+			}
 		}
 	}
 }
@@ -610,7 +707,7 @@ int main(int argc, char **argv, char **envp)
 	char *input;
 
 	signal(SIGINT, handle_sigint);  
-	signal(SIGQUIT, handle_sigquit);       
+	signal(SIGQUIT, SIG_IGN);       
 
 	while (1) {
 		g_in_child = 0;

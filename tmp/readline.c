@@ -28,8 +28,8 @@ void	get_user_input()
 
 int main()
 {
-	while (1)
-	{
+	
+	
 		get_user_input();
-	}
+	
 }

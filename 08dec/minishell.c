@@ -1,3 +1,15 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   minishell.c                                        :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: regillio <marvin@42.fr>                    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/12/08 21:28:42 by regillio          #+#    #+#             */
+/*   Updated: 2025/12/09 00:51:27 by regillio         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 /* Dec 4, testing (cgoh, cedric, brandon) */
 /*
  * export test!=abc [X]
@@ -22,6 +34,17 @@
   should run the ls command (as white spaces are ignored) 
   >$ $spaces ls $spaces
   a.out minishell.c
+
+  * export VAR_A=TEST_A 	: will populate the env list 
+  * export VAR_B		: will *not* populate the env_list
+  * export VAR_B=		: will populate the env_list
+  * export VAR_C="TEST_C"	: will populate the env_list with `VAR_C=C_VAL`
+  * export VAR
+  *
+  * export		will log VAR_B
+  * env			will not log VAR_B
+  *
+  * export		will log VAR_A & VAR_B
 
  * Expansion with echo
   echo "'$USER'"
@@ -160,8 +183,22 @@ int g_in_child = 0;
 // add a global variable for exit status
 int g_exit_status = 0;
 
+void handle_child(int sig)
+{
+	(void)sig;
+	printf("sig child\n");
+	write(1, "\n", 1);
+}
+
 void handle_sigint(int sig)
-{ (void)sig; g_exit_status = 128 + sig; if (g_in_child == 0) { write(1, "\n", 1); rl_on_new_line(); rl_replace_line("", 0); rl_redisplay(); } else { write(1, "\n", 1); } }
+{ 
+ 	g_exit_status = 128 + sig;
+	write(1, "\n", 1);
+//	write(1, "MOGILLIO> ", 10);
+	rl_on_new_line();
+	rl_replace_line("", 0);
+	rl_redisplay();
+} 
 
 // finally fix the sig and exit status
 
@@ -244,7 +281,6 @@ void ft_exit(t_cmd *cmd)
 {
 	int	exit_code;
 
-	exit_code = atoi(cmd->argv[1]);
 	printf("exit\n");
 	if (!cmd->argv[1])
 		exit (g_exit_status);
@@ -258,6 +294,7 @@ void ft_exit(t_cmd *cmd)
 		printf("minishell: exit: too many arugments\n");
 		return ;
 	}
+	exit_code = atoi(cmd->argv[1]);
 	exit (exit_code % 256);
 }
 
@@ -496,8 +533,6 @@ void close_unused_heredoc_fds(t_cmd *cmd_list, t_cmd *current_cmd)
 	}
 }
 
-/* now runs the exit builtin */
-
 void executor(t_cmd *cmd_list, t_env *env)
 {
 	int pipe_fd[2]; 
@@ -522,8 +557,8 @@ void executor(t_cmd *cmd_list, t_env *env)
 		if (last_pid == -1) { perror("fork"); return; }
 
 		if (last_pid == 0) { 
-			signal(SIGINT, handle_sigint);
-			signal(SIGQUIT, SIG_DFL);
+			//signal(SIGINT, SIG_IGN);
+			//signal(SIGQUIT, SIG_DFL);
 			close_unused_heredoc_fds(cmd_list, cmd);
 			if (prev_fd != -1) { dup2(prev_fd, 0); close(prev_fd); }
 			if (cmd->next) { close(pipe_fd[0]); dup2(pipe_fd[1], 1); close(pipe_fd[1]); }
@@ -564,7 +599,8 @@ void executor(t_cmd *cmd_list, t_env *env)
 			perror(cmd->argv[0]); 
 			exit(127);
 		}
-		else {
+		else 
+	{
 			if (prev_fd != -1) close(prev_fd);
 			if (cmd->next) { close(pipe_fd[1]); prev_fd = pipe_fd[0]; }
 			cmd = cmd->next;
@@ -578,7 +614,13 @@ void executor(t_cmd *cmd_list, t_env *env)
 		if (wpid == last_pid)
 		{
 			if (WIFEXITED(status))
+			{
 				g_exit_status = WEXITSTATUS(status);
+			}
+			if (WTERMSIG(status))
+			{
+				g_exit_status = WTERMSIG(status) + 128;
+			}
 		}
 	}
 }
@@ -611,9 +653,9 @@ int main(int argc, char **argv, char **envp)
 
 	signal(SIGINT, handle_sigint);  
 	signal(SIGQUIT, handle_sigquit);       
-
+	
 	while (1) {
-		g_in_child = 0;
+		//g_in_child = 0;
 		input = readline("MOGILLIO> ");
 		if (!input) { printf("exit\n"); break; }
 		if (!*input) { free(input); continue; }
@@ -628,7 +670,7 @@ int main(int argc, char **argv, char **envp)
 		remove_quotes(cmds);
 		handle_heredocs(cmds); 
 
-		g_in_child = 1;
+		//g_in_child = 1;
 
 		executor(cmds, env_list);
 

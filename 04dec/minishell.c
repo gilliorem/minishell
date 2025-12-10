@@ -1,15 +1,17 @@
 /* Dec 4, testing (cgoh, cedric, brandon) */
+
 /*
- * export test!=abc [X]
-  bash: export: `test!=abc': not a valid identifier 
+ * export test!=abc
+  bash: export: `test!=abc': not a valid identifier
   export key value should not take any special char
  
- * exit 9223372036854775808 (more than long long int)  [X]
+ * exit 9223372036854775808 (more than long long int) 
+ >$ exit 9223372036854775808
+ exit
  bash: exit: 9223372036854775808: numeric argument required
  can use string compare: if the string value is more than long long int limit, print the error.
 
- * exit with no arguments does not overwrite the last exit status [X]
-  catch the exit status of ^C
+ * exit with no arguments does not overwrite the last exit status
   >$ echo ^C
   >$ exit
   exit
@@ -18,7 +20,6 @@
   --> prints the status of echo ^C, not the status of `exit` 
 
  * export spaces="           "
-  and other cases where a $something combine with a cmd should still run the cmd
   should run the ls command (as white spaces are ignored) 
   >$ $spaces ls $spaces
   a.out minishell.c
@@ -56,7 +57,7 @@
 
 /* yuchi tests */
 
-/* echo -nnnn hello: hello [X] */
+/* echo -nnnn hello: hello */
 
 
 /* MEMORY ISSUES */
@@ -137,7 +138,6 @@
 // cat <minishell.c <<HERE | cat
 // cat << $
 
-#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -157,166 +157,467 @@ typedef struct s_cmd { char **argv; t_redir *redirections; struct s_cmd *next; }
 typedef struct s_env { char *key; char *value; size_t exit_status; struct s_env *next; } t_env;
 
 int g_in_child = 0; 
-// add a global variable for exit status
-int g_exit_status = 0;
 
 void handle_sigint(int sig)
-{ (void)sig; g_exit_status = 128 + sig; if (g_in_child == 0) { write(1, "\n", 1); rl_on_new_line(); rl_replace_line("", 0); rl_redisplay(); } else { write(1, "\n", 1); } }
-
-// finally fix the sig and exit status
-
-void handle_sigquit(int sig)
 {
-	(void) sig;
+	(void)sig;
 	if (g_in_child == 0)
 	{
+		write(1, "\n", 1);
 		rl_on_new_line();
-		rl_replace_line("  ", 0);
+		rl_replace_line("", 0);
 		rl_redisplay();
 	}
-	if (g_in_child == 1)
+	else
 	{
-		g_exit_status = 128 + sig;
-		printf("Quit (core dumped)\n");
+		write(1, "\n", 1);
 	}
 }
 
-size_t ft_strlen(const char *s) { size_t c=0; while (s[c]) c++; return c; }
+size_t ft_strlen(const char *s) 
+{ 
+	size_t c=0; 
+	while (s[c]) c++; 
+	return c; 
+}
 
-char *ft_strdup(const char *s1) { char *dst = malloc(strlen(s1) + 1); if (!dst) return NULL; strcpy(dst, s1); return dst; }
+char *ft_strdup(const char *s1) 
+{ 
+	char *dst = malloc(strlen(s1) + 1); 
+	if (!dst) 
+		return NULL; 
+	strcpy(dst, s1); 
+	return dst; 
+}
 
 char *ft_substr(char const *s, unsigned int start, size_t len) 
-{ if (!s) return NULL; if (start >= strlen(s)) return ft_strdup(""); if (len > strlen(s + start)) len = strlen(s + start);
-	char *sub = malloc(sizeof(char) * (len + 1)); if (!sub) return NULL; strncpy(sub, s + start, len); sub[len] = '\0'; return sub; }
-
-char *ft_strjoin(const char *s1, const char *s2) { if (!s1 || !s2) return NULL; char *ptr = malloc(ft_strlen(s1) + ft_strlen(s2) + 1); if (!ptr) return NULL; strcpy(ptr, s1); strcat(ptr, s2); return ptr; }
-
-static int word_countandreplace(char *s, char delimiter) { bool new_word=false; char *temp=s; int count=0; while (*temp) { if (*temp!=delimiter && !new_word) { new_word=true; count++; } else if (*temp==delimiter) { *temp='\0'; new_word=false; } temp++; } return count; }
+{
+	if (!s) return NULL; 
+	if (start >= strlen(s)) 
+		return ft_strdup("");
+	if (len > strlen(s + start)) 
+		len = strlen(s + start);
+	char *sub = malloc(sizeof(char) * (len + 1)); if (!sub) return NULL;
+	strncpy(sub, s + start, len); sub[len] = '\0'; return sub;
+}
+char *ft_strjoin(const char *s1, const char *s2) {
+	if (!s1 || !s2) return NULL;
+	char *ptr = malloc(ft_strlen(s1) + ft_strlen(s2) + 1);
+	if (!ptr) return NULL;
+	strcpy(ptr, s1); strcat(ptr, s2); return ptr;
+}
+static int word_countandreplace(char *s, char delimiter) {
+	bool new_word=false; char *temp=s; int count=0;
+	while (*temp) { if (*temp!=delimiter && !new_word) { new_word=true; count++; } else if (*temp==delimiter) { *temp='\0'; new_word=false; } temp++; }
+	return count;
+}
 static bool fill_ptr(char **ptr, char *s1, int wc) {
 	int i=0; while (i<wc) { if (*s1) { ptr[i++]=ft_strdup(s1); if (!ptr[i-1]) return false; while (*s1) s1++; } s1++; } ptr[i]=NULL; return true;
 }
-char **ft_split(char const *s, char c) { if (!s) return NULL; char *s1=ft_strdup(s); if (!s1) return NULL; int wc=word_countandreplace(s1, c); char **ptr=malloc(sizeof(char*)*(wc+1)); if (!ptr || !fill_ptr(ptr, s1, wc)) { free(s1); return NULL; } free(s1); return ptr; }
+char **ft_split(char const *s, char c) {
+	if (!s) return NULL; char *s1=ft_strdup(s); if (!s1) return NULL;
+	int wc=word_countandreplace(s1, c); char **ptr=malloc(sizeof(char*)*(wc+1));
+	if (!ptr || !fill_ptr(ptr, s1, wc)) { free(s1); return NULL; } free(s1); return ptr;
+}
 void free_split(char **arr) { int i=0; if (!arr) return; while(arr[i]) free(arr[i++]); free(arr); }
 
-static int get_len(int n) { int len=0; if(n<=0) len++; while(n){ n/=10; len++; } return len; }
-char *ft_itoa(int n) { int len = get_len(n); char *str = malloc(len + 1); if (!str) return NULL; str[len] = '\0'; if (n == 0) str[0] = '0'; if (n < 0) { str[0] = '-'; n = -n; } while (n) { str[--len] = (n % 10) + '0'; n /= 10; } return str; }
+static int get_len(int n) {
+	int len=0; if(n<=0) len++; while(n){ n/=10; len++; } return len;
+}
+char *ft_itoa(int n) {
+	int len = get_len(n);
+	char *str = malloc(len + 1);
+	if (!str) return NULL;
+	str[len] = '\0';
+	if (n == 0) str[0] = '0';
+	if (n < 0) { str[0] = '-'; n = -n; } 
+	while (n) { str[--len] = (n % 10) + '0'; n /= 10; }
+	return str;
+}
 
-t_env *new_env_node(char *key, char *value) { t_env *node = malloc(sizeof(t_env)); node->key = key; node->value = value; node->next = NULL; return node; }
+t_env *new_env_node(char *key, char *value) 
+{
+	t_env *node = malloc(sizeof(t_env));
+	node->key = key; node->value = value; node->next = NULL;
+	return node;
+}
 
-void free_env_list(t_env *env) { t_env *tmp; while (env) { tmp = env->next; free(env->key); free(env->value); free(env); env = tmp; } }
+void free_env_list(t_env *env) 
+{
+	t_env *tmp;
+	while (env) 
+	{ 
+		tmp = env->next; 
+		free(env->key); 
+		free(env->value); 
+		free(env); 
+		env = tmp; 
+	}
+}
 
-void	increment_shelvl(t_env **envp) { int shlvl = 0; t_env *node = *envp; while (node->next != NULL) { if (strcmp(node->key, "SHLVL") == 0) { shlvl = atoi(node->value) + 1; node->value = ft_itoa(shlvl); } node = node->next; } }
+void	increment_shelvl(t_env **envp)
+{
+	int shlvl = 0;
+	t_env *node = *envp;
+	while (node->next != NULL)
+	{
+		if (strcmp(node->key, "SHLVL") == 0)
+		{
+			shlvl = atoi(node->value) + 1;
+			node->value = ft_itoa(shlvl);
+		}
+		node = node->next;
+	}
+}
 
-t_env *init_environment(char **envp) { t_env *head = NULL; t_env *tail = NULL; int i = 0; while (envp[i]) { char *eq_pos = strchr(envp[i], '='); if (eq_pos) { char *key = ft_substr(envp[i], 0, eq_pos - envp[i]); char *value = ft_strdup(eq_pos + 1); t_env *new_node = new_env_node(key, value); if (!head) { head = new_node; tail = head; } else { tail->next = new_node; tail = new_node; } } i++; } return head; }
+t_env *init_environment(char **envp) 
+{
+	t_env *head = NULL; t_env *tail = NULL; int i = 0;
+	while (envp[i]) 
+	{
+		char *eq_pos = strchr(envp[i], '=');
+		if (eq_pos) 
+		{
+			char *key = ft_substr(envp[i], 0, eq_pos - envp[i]);
+			char *value = ft_strdup(eq_pos + 1);
+			t_env *new_node = new_env_node(key, value);
+			if (!head) 
+			{ 
+				head = new_node; 
+				tail = head; 
+			} 
+			else 
+			{ 
+				tail->next = new_node; 
+				tail = new_node; 
+			}
+		} i++;
+	}
+	return head;
+}
 // returns a copy of the env value when the key match.
-char *get_env_val(t_env *env, char *key) { while (env) { if (strcmp(env->key, key) == 0) return ft_strdup(env->value); env = env->next; } return NULL; }
- 
-char **env_list_to_tab(t_env *env) { int count = 0; t_env *tmp = env; while (tmp) { count++; tmp = tmp->next; } char **tab = malloc(sizeof(char *) * (count + 1)); int i = 0; tmp = env; while (tmp) { char *temp = ft_strjoin(tmp->key, "="); tab[i++] = ft_strjoin(temp, tmp->value); free(temp); tmp = tmp->next; } tab[i] = NULL; return tab; }
+char *get_env_val(t_env *env, char *key) 
+{
+	while (env) 
+	{ 
+		if (strcmp(env->key, key) == 0) 
+			return ft_strdup(env->value); 
+		env = env->next; 
+	}
+	return NULL;
+}
+char **env_list_to_tab(t_env *env) {
+	int count = 0; t_env *tmp = env; while (tmp) { count++; tmp = tmp->next; }
+	char **tab = malloc(sizeof(char *) * (count + 1)); int i = 0; tmp = env;
+	while (tmp) {
+		char *temp = ft_strjoin(tmp->key, "="); tab[i++] = ft_strjoin(temp, tmp->value); free(temp); tmp = tmp->next;
+	}
+	tab[i] = NULL; return tab;
+}
 
 /* now stop comparing ? with env value since we move out of the env list */
-void ft_env(t_env *env) { while (env) { if (env->value) printf("%s=%s\n", env->key, env->value); env = env->next; } }
+void ft_env(t_env *env)
+{
+	while (env) 
+	{ 
+		if (env->value)
+			printf("%s=%s\n", env->key, env->value); 
+		env = env->next; 
+	}
+}
 
 // if the key match, replace the old env value with a new one.
-int update_env(t_env *env, char *key, char *new_value) { while (env) { if (strcmp(env->key, key) == 0) { free(env->value); env->value = ft_strdup(new_value); return 1; } env = env->next; } return 0; }
+int update_env(t_env *env, char *key, char *new_value) 
+{
+	while (env) 
+	{ 
+		if (strcmp(env->key, key) == 0) 
+		{ 
+			free(env->value);
+			env->value = ft_strdup(new_value);
+			return 1;
+		}
+		env = env->next; 
+	}
+	return 0;
+}
 
-void ft_pwd(void) { char cwd[1024]; if (getcwd(cwd, sizeof(cwd))) printf("%s\n", cwd); else perror("pwd"); }
+void ft_pwd(void)
+{
+	char cwd[1024];
+	if (getcwd(cwd, sizeof(cwd)))
+		printf("%s\n", cwd);
+	else
+		perror("pwd");
+}
 
-void update_pwd(t_env *env, char *pwd) { char cwd[1024]; getcwd(cwd, sizeof(cwd)); update_env(env, pwd, cwd); }
+void update_pwd(t_env *env, char *pwd)
+{
+	char cwd[1024];
+	getcwd(cwd, sizeof(cwd));
+	update_env(env, pwd, cwd);
+}
 
 /* now checks for OLDPWD env */
 int ft_cd(t_cmd *cmd, t_env *env)
 {
-	char *target_path = NULL; if (cmd->argv[2]) { write(2, "minishell: cd: too many arguments\n", 34); return (1); }
+	char *target_path = NULL;
+	if (cmd->argv[2])
+	{
+		write(2, "minishell: cd: too many arguments\n", 34);
+		return (1);
+	}
 	char *oldpwd = get_env_val(env, "OLDPWD");
 	update_pwd(env, "OLDPWD");
-	if (!cmd->argv[1] || strcmp(cmd->argv[1], "~") == 0) { target_path = get_env_val(env, "HOME"); if (!target_path) { write(2, "minishell: cd: HOME not set\n", 28); return 1; } }
-	else if (strcmp(cmd->argv[1], "-") == 0) { target_path = oldpwd; if (!target_path) { write(2, "minishell: cd: OLDPWD not set\n", 30); return (1); } }
-	else target_path = ft_strdup(cmd->argv[1]); if (chdir(target_path) != 0) { perror("bash: cd"); return (1); }
+	if (!cmd->argv[1] || strcmp(cmd->argv[1], "~") == 0)
+	{
+		target_path = get_env_val(env, "HOME");
+		if (!target_path)
+		{
+			write(2, "minishell: cd: HOME not set\n", 28);
+			return 1;
+		}
+	}
+	else if (strcmp(cmd->argv[1], "-") == 0)
+	{
+		target_path = oldpwd;
+		if (!target_path)
+		{
+			write(2, "minishell: cd: OLDPWD not set\n", 30);
+			return (1);
+		}
+	}
+	else
+		target_path = ft_strdup(cmd->argv[1]);
+	if (chdir(target_path) != 0)
+	{
+		perror("bash: cd");
+		return (1);
+	}
 	update_pwd(env, "PWD");
 	free(target_path);
 	return 0;
 }
 
 /* add-on helper */
-int	is_number(char *s) { int	i; i = 0; while (s[i]) { if (s[0] == '-' || s[0] == '+') i++; if (s[i] < '0' || s[i] > '9') return (0); i++; } return (1); }
-
-void ft_exit(t_cmd *cmd)
+int	is_number(char *s)
 {
-	int	exit_code;
+	int	i;
 
-	exit_code = atoi(cmd->argv[1]);
+	i = 0;
+	while (s[i])
+	{
+		if (s[0] == '-' || s[0] == '+')
+			i++;
+		if (s[i] < '0' || s[i] > '9')
+			return (0);
+		i++;
+	}
+	return (1);
+}
+
+// if there is more than one argument (numbers)
+// exit will print `exit\n`
+// bash: exit: too many arguments
+// **and it will not exit the program**
+
+// if sec arg is not a number, 
+// exit will print `exit\n`,
+// bash: exit
+
+/* now we have a propper exit builtin,
+ * that returns the exit code and pass it to the global exit_status */
+int	ft_exit(t_cmd *cmd, t_env *env)
+{
+	int i = 0;
+	int exit = 0;
 	printf("exit\n");
-	if (!cmd->argv[1])
-		exit (g_exit_status);
-	if (!is_number(cmd->argv[1]))
+	while (cmd->argv[i])
 	{
-		printf("minishell: exit: %s: numeric argument required\n", cmd->argv[1]);
-		exit (2);
+		if (i > 1)
+		{
+			exit = 1;
+			printf("minishell: exit: too many arguments\n");
+			break;
+		}
+		if (strcmp(cmd->argv[0], "exit") == 0 && !cmd->argv[1])
+		{
+			exit = 0;
+			break;
+		}
+		if (!is_number(cmd->argv[1]))
+		{
+			exit = 2;
+			printf("minishell: exit: %s: numeric argument required\n", cmd->argv[1]);
+			break;
+		}
+		else
+			exit = atoi(cmd->argv[1]);
+		i++;
 	}
-	if (cmd->argv[2])
-	{
-		printf("minishell: exit: too many arugments\n");
-		return ;
-	}
-	exit (exit_code % 256);
+	if (env->exit_status >= 256)
+		return (exit % 256);
+	return (exit);
 }
 
 /* now check if can write */
-/* now echo handles multiple `-n` */
 int ft_echo(t_cmd *cmd)
 {
-	int i = 1; bool newline = true;
-	while (cmd->argv[i] && cmd->argv[i][0] == '-' && cmd->argv[i][1] == 'n')
-	{ int j = 1; char *n_str = cmd->argv[i]; n_str++; int n_flag = 1; int k = 0;
-		while (n_str[k] && n_flag == 1)
-		{ if (n_str[k] != 'n') { n_flag = 0; } k++; }
-		if (n_flag == 0) { break; }
-		while (cmd->argv[i] && cmd->argv[i][j] == 'n') j++;
-		i++; newline = false;
+	int i = 1;
+	bool newline = true;
+	while (cmd->argv[i] && strcmp(cmd->argv[i], "-n") == 0)
+	{
+		newline = false;
+		i++;
 	}
 	while (cmd->argv[i])
-	{ if (write(1, cmd->argv[i], strlen(cmd->argv[i])) == -1) { printf("minishell: echo: cannot write here\n"); return (1); } if (cmd->argv[i + 1]) write(1, " ", 1); i++; }
-	if (newline) write(1, "\n", 1); return (0);
+	{
+		if (write(1, cmd->argv[i], strlen(cmd->argv[i])) == -1)
+		{
+			printf("minishell: echo: cannot write here\n");
+			return (1);
+		}
+		if (cmd->argv[i + 1])
+			write(1, " ", 1);
+		i++;
+	}
+	if (newline)
+		write(1, "\n", 1);
+	return (0);
 }
 
-int ft_isalpha_underscore(int c) { if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c == '_')) return (1); return (0); }
+int	ft_isalpha_underscore(int c)
+{
+	if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+			|| (c == '_'))
+		return (1);
+	return (0);
+}
 
-int ft_isdigit(int c) { if (c >= '0' && c <= '9') return (1); return (0); }
+int	ft_isdigit(int c)
+{
+	if (c >= '0' && c <= '9')
+		return (1);
+	return (0);
+}
 
-int check_key(char *key) { int i; i = 0; while (key[i]) { if (ft_isdigit(key[i])) { i++; continue; } if (ft_isalpha_underscore(key[i]) == 0) { printf("minishell: export: '%s': not a valid identifier\n", key); return (0); } i++; } return (1); }
+// return (1) on success.
+int	check_key(char *key)
+{
+	int	i;
 
-void print_env_list(t_env **env_head) { t_env *tmp = *env_head; while (tmp->next != NULL) { printf("declare -x %s=\"%s\"\n", tmp->key, tmp->value); tmp = tmp->next; } }
+	i = 0;
+	if (ft_isalpha_underscore(key[0]) || ft_isdigit(key[0]))
+	{
+		printf("%c is not a valid identifier [%s]\n", key[0], key); 
+		return 0;
+	}
+	while (key[i] || key[i] == '=')
+	{
+		if (ft_isalpha_underscore(key[i]) == 0)
+			return (0);
+		i++;
+	}
+	return (1);
+}
 
-int check_first_char (char c) { if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c == '_')) return (1); return (0); }
+/* export KEY=VALUE */
+/* weird cases: = `a=`ok `a==`ok (even save the value as `=`) 
+   cannot start with a special characters nor a number, 
+ * if there is an equal sign, it has to be one only with valid char on the right and any char left 
+ * I need to have 
+ * the value cannot contain special characters */
 
-/* Now handle special characters in the key value */
-int ft_export(t_cmd *cmd, t_env **env_head) 
+
+/* now export with no arg prints the entire env list */
+void	print_env_list(t_env **env_head)
+{
+	t_env *tmp = *env_head;
+	while (tmp->next != NULL)
+	{
+		printf("declare -x %s=\"%s\"\n", tmp->key, tmp->value);
+		tmp = tmp->next;
+	}
+}
+
+// the first char can only be [A-Z] [a-z] _
+
+int	check_first_char (char c)
+{
+	if ((c >= 'a' && c <= 'z')
+			|| (c >= 'A' && c <= 'Z')
+			|| (c == '_'))
+		return (1);
+	return (0);
+}
+
+/* Now check for valid first char */
+int	ft_export(t_cmd *cmd, t_env **env_head) 
 {
 	if (!cmd->argv[1])
-	       	print_env_list(env_head);
+		print_env_list(env_head);
 	for (int i = 1; cmd->argv[i]; i++)
-	{ 
+	{
 		char *arg = cmd->argv[i];
-	       	if (check_first_char(arg[0]) == 0)
+		if (check_first_char(arg[0]) == 0)
 		{
-		       	printf("minishell: export: '%s' not a valid identifier\n", arg); return (1); 
+			printf("minishell: export: '%s' not a valid identifier\n", arg);
+			return (1);
 		}
 		char *eq_pos = strchr(arg, '=');
-		if (!eq_pos) { if (!check_key(arg)) return (0); }
-		if (eq_pos) { char *key = ft_substr(arg, 0, eq_pos - arg);
-			if (!check_key(key)) return (0);
+		if (eq_pos)
+		{
+			char *key = ft_substr(arg, 0, eq_pos - arg);
 			char *value = eq_pos + 1;
-			if (!update_env(*env_head, key, value)) { t_env *new_node = new_env_node(key, ft_strdup(value)); if (!*env_head) *env_head = new_node; else { t_env *tmp = *env_head; while (tmp->next) tmp = tmp->next; tmp->next = new_node; } } 
-			else free(key); } } return (0);
+			if (!update_env(*env_head, key, value)) 
+			{
+				t_env *new_node = new_env_node(key, ft_strdup(value));
+				if (!*env_head)
+					*env_head = new_node;
+				else
+				{ 
+					t_env *tmp = *env_head;
+					while (tmp->next)
+						tmp = tmp->next;
+					tmp->next = new_node;
+				}
+			} 
+			else 
+				free(key);
+		}
+	}
+	return (0);
 }
 
 int	ft_unset(t_cmd *cmd, t_env **env_head) 
 {
-	if (!cmd->argv[1]) return (0);
-	for (int i = 1; cmd->argv[i]; i++) {
-		int j = 0; t_env *curr = *env_head; t_env *prev = NULL; while (curr) 
-		{ if (strcmp(curr->key, cmd->argv[i]) == 0) { if (prev) prev->next = curr->next; else *env_head = curr->next; free(curr->key); free(curr->value); free(curr); break; } prev = curr; curr = curr->next; }
-		j++; } return (0);
+	if (!cmd->argv[1])
+		return (0);
+	for (int i = 1; cmd->argv[i]; i++)
+	{
+		int j = 0;
+		t_env *curr = *env_head;
+		t_env *prev = NULL;
+		while (curr) 
+		{
+			if (strcmp(curr->key, cmd->argv[i]) == 0) 
+			{
+				if (prev)
+					prev->next = curr->next;
+				else
+					*env_head = curr->next;
+				free(curr->key);
+				free(curr->value);
+				free(curr);
+				break;
+			} 
+			prev = curr;
+			curr = curr->next;
+		}
+
+		j++;
+	}
+	return (0);
 }
 
 char *get_command_path(char *cmd, t_env *env) {
@@ -359,6 +660,50 @@ t_token *lexer(char *input) {
 t_cmd *new_cmd(void) { t_cmd *c = malloc(sizeof(t_cmd)); c->argv=NULL; c->redirections=NULL; c->next=NULL; return c; }
 int count_words_argv(t_token *t) { int c=0; while(t&&t->type!=TOKEN_PIPE) { if(t->type==TOKEN_WORD)c++; else if(t->type>=TOKEN_REDIR_IN) { if(t->next)t=t->next; } t=t->next; } return c; }
 
+/* broken parser
+t_cmd *parser(t_token *tok, t_env *env) 
+{
+	if(!tok)
+		return NULL;
+	t_cmd *head=new_cmd();
+	t_cmd *cur=head;
+	int wc=count_words_argv(tok);
+	// cur is a cmd
+	cur->argv=malloc(sizeof(char*)*(wc+1));
+	int i=0;
+	while(tok)
+	{
+		if(tok->type==TOKEN_PIPE) 
+		{
+			cur->argv[i]=NULL;
+			cur->next=new_cmd();
+			cur=cur->next;
+			tok=tok->next;
+			wc=count_words_argv(tok);
+			cur->argv=malloc(sizeof(char*)*(wc+1));
+			i=0;
+			continue;
+		}
+		if(tok->type >= TOKEN_REDIR_IN) 
+		{
+			t_redir *r=malloc(sizeof(t_redir));
+			r->type=tok->type;
+			r->heredoc_fd = -1;
+			if(!tok||tok->type!=TOKEN_WORD) 
+				return NULL;
+			r->next=cur->redirections;
+			cur->redirections=r;
+		} 
+		else
+			cur->argv[i++]=ft_strdup(tok->value);
+		tok=tok->next;
+	} 
+	cur->argv[i]=NULL;
+	return head;
+}
+*/
+
+/*good parser from Nov30 */
 t_cmd *parser(t_token *tok) {
     if(!tok) return NULL; t_cmd *head=new_cmd(); t_cmd *cur=head;
     int wc=count_words_argv(tok); cur->argv=malloc(sizeof(char*)*(wc+1)); int i=0;
@@ -373,6 +718,22 @@ t_cmd *parser(t_token *tok) {
     } cur->argv[i]=NULL; return head;
 }
 
+
+/*
+   check_writable_file(t_env *env, t_token *tok)
+   {
+
+   printf("filename:%s\n",r->filename);
+   printf("redir: %d\n", cur->redirections->type); 
+   printf("join_path:%s\n", ft_strjoin(get))
+   if (strstr(r->filename, "full") != NULL && cur->redirections->type == 3)
+   {
+   printf("minishell: echo: write error: No space left on device\n");
+   break;
+   }
+
+   }
+   */
 
 char *get_env_val_wrapper(char *key, t_env *env) { char *v=get_env_val(env, key); return v ? v : ft_strdup(""); }
 char *expand_str(char *s, t_env *env) {
@@ -392,8 +753,7 @@ char *expand_str(char *s, t_env *env) {
 			char *k=ft_substr(s,st,i-st); 
 			char *v;
 			if (k[0] == '?' && k[1] == '\0')
-				v = ft_itoa(g_exit_status);
-				//v = ft_itoa(env->exit_status);
+				v = ft_itoa(env->exit_status);
 			else
 				v=get_env_val_wrapper(k,env); 
 			free(k); char *t=ft_strjoin(res,v); free(res); free(v); res=t; 
@@ -503,33 +863,38 @@ void executor(t_cmd *cmd_list, t_env *env)
 	int pipe_fd[2]; 
 	int prev_fd = -1; 
 	t_cmd *cmd = cmd_list;
+	int status = 0;
 
 	if (cmd && !cmd->next && cmd->argv && cmd->argv[0]) {
 		if (strcmp(cmd->argv[0], "exit") == 0) 
 		{
-			ft_exit(cmd_list);
+			env->exit_status = ft_exit(cmd_list, env);
+			free_cmd_list(cmd_list);
+			exit(env->exit_status);
 		} 
-		else if (strcmp(cmd->argv[0], "export") == 0){g_exit_status = ft_export(cmd, &env);return;}
-		else if (strcmp(cmd->argv[0], "unset") == 0) { g_exit_status = ft_unset(cmd, &env);  return; }
-		else if (strcmp(cmd->argv[0], "cd") == 0) { g_exit_status = ft_cd(cmd, env);  return; }
+		else if (strcmp(cmd->argv[0], "export") == 0){status = ft_export(cmd, &env);env->exit_status = status;return;}
+		else if (strcmp(cmd->argv[0], "unset") == 0) { status = ft_unset(cmd, &env); env->exit_status = status; return; }
+		else if (strcmp(cmd->argv[0], "cd") == 0) { status = ft_cd(cmd, env); env->exit_status = status; return; }
 	}
 
 	pid_t last_pid = 0;
-
 	while (cmd) {
 		if (cmd->next) pipe(pipe_fd);
 		last_pid = fork();
 		if (last_pid == -1) { perror("fork"); return; }
 
 		if (last_pid == 0) { 
-			signal(SIGINT, handle_sigint);
+			signal(SIGINT, SIG_DFL);
 			signal(SIGQUIT, SIG_DFL);
+
 			close_unused_heredoc_fds(cmd_list, cmd);
+
 			if (prev_fd != -1) { dup2(prev_fd, 0); close(prev_fd); }
 			if (cmd->next) { close(pipe_fd[0]); dup2(pipe_fd[1], 1); close(pipe_fd[1]); }
+
 			t_redir *r = cmd->redirections;
 			while (r) {
-				int fd = 0;
+				int fd;
 				if (r->type == TOKEN_REDIR_OUT) {
 					fd = open(r->filename, O_WRONLY|O_CREAT|O_TRUNC, 0644);
 				}
@@ -571,16 +936,28 @@ void executor(t_cmd *cmd_list, t_env *env)
 		}
 	}
 
-	int status;
 	pid_t wpid;
 	while ((wpid = wait(&status)) > 0)
 	{
 		if (wpid == last_pid)
 		{
 			if (WIFEXITED(status))
-				g_exit_status = WEXITSTATUS(status);
+				status = WEXITSTATUS(status);
 		}
 	}
+	env->exit_status = status;
+
+	/*
+	   char *status_str = ft_itoa(status);
+	   if (!update_env(env, "?", status_str))
+	   {
+	   t_env *new_node = new_env_node(ft_strdup("?"), ft_strdup(status_str));
+	   t_env *tmp = env; 
+	   while(tmp->next) tmp=tmp->next; 
+	   tmp->next = new_node;
+	   }
+	   free(status_str);
+	   */
 }
 
 void cleanup_heredocs(t_cmd *cmd_list)
@@ -610,7 +987,7 @@ int main(int argc, char **argv, char **envp)
 	char *input;
 
 	signal(SIGINT, handle_sigint);  
-	signal(SIGQUIT, handle_sigquit);       
+	signal(SIGQUIT, SIG_IGN);       
 
 	while (1) {
 		g_in_child = 0;

@@ -1,11 +1,18 @@
 Failed tests
-$?
+$? (mohid) [X]
+builtins return value (1 on failure, 0 on success to match with $) [X]
+cd can take only 0 or 1 argument. [X]
 cd ~ [X]
-cd -
+cd - [X]
+cd OLPWD state []
 update the $PWD [X]
 update the $OLDPWD [X]
-export a=1 b=2
-unset a b
+unset a b [X]
+export a=1 b=2 [X]
+export identifier [X]
+unset characters []
+export with no args []
+
 cat <<HERE <<DOC
 cat <<HERE (Inside $USER should be expanded)
 cat <minishell.c <<HERE | cat

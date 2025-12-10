@@ -1,0 +1,3 @@
+// we can have a return status for each builtin.
+// int cd(), int export()...
+// base on that return status, the $ value will change. 

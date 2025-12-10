@@ -8,7 +8,7 @@
  bash: exit: 9223372036854775808: numeric argument required
  can use string compare: if the string value is more than long long int limit, print the error.
 
- * exit with no arguments does not overwrite the last exit status [X]
+ * exit with no arguments does not overwrite the last exit status
   catch the exit status of ^C
   >$ echo ^C
   >$ exit
@@ -161,24 +161,15 @@ int g_in_child = 0;
 int g_exit_status = 0;
 
 void handle_sigint(int sig)
-{ (void)sig; g_exit_status = 128 + sig; if (g_in_child == 0) { write(1, "\n", 1); rl_on_new_line(); rl_replace_line("", 0); rl_redisplay(); } else { write(1, "\n", 1); } }
-
-// finally fix the sig and exit status
+{ (void)sig; g_exit_status = 130; if (g_in_child == 0) { write(1, "\n", 1); rl_on_new_line(); rl_replace_line("", 0); rl_redisplay(); } else { write(1, "\n", 1); } }
 
 void handle_sigquit(int sig)
 {
 	(void) sig;
-	if (g_in_child == 0)
-	{
-		rl_on_new_line();
-		rl_replace_line("  ", 0);
-		rl_redisplay();
-	}
-	if (g_in_child == 1)
-	{
-		g_exit_status = 128 + sig;
-		printf("Quit (core dumped)\n");
-	}
+	g_exit_status = 128 + sig;
+	printf("handle sig quit\n");
+	printf("in child\n");
+	printf("Quit (core dumped)\n");
 }
 
 size_t ft_strlen(const char *s) { size_t c=0; while (s[c]) c++; return c; }
@@ -292,15 +283,10 @@ int check_first_char (char c) { if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 
 /* Now handle special characters in the key value */
 int ft_export(t_cmd *cmd, t_env **env_head) 
 {
-	if (!cmd->argv[1])
-	       	print_env_list(env_head);
+	if (!cmd->argv[1]) print_env_list(env_head);
 	for (int i = 1; cmd->argv[i]; i++)
-	{ 
-		char *arg = cmd->argv[i];
-	       	if (check_first_char(arg[0]) == 0)
-		{
-		       	printf("minishell: export: '%s' not a valid identifier\n", arg); return (1); 
-		}
+	{ char *arg = cmd->argv[i]; if (check_first_char(arg[0]) == 0)
+		{ printf("minishell: export: '%s' not a valid identifier\n", arg); return (1); }
 		char *eq_pos = strchr(arg, '=');
 		if (!eq_pos) { if (!check_key(arg)) return (0); }
 		if (eq_pos) { char *key = ft_substr(arg, 0, eq_pos - arg);
@@ -523,7 +509,7 @@ void executor(t_cmd *cmd_list, t_env *env)
 
 		if (last_pid == 0) { 
 			signal(SIGINT, handle_sigint);
-			signal(SIGQUIT, SIG_DFL);
+			signal(SIGQUIT, handle_sigquit);
 			close_unused_heredoc_fds(cmd_list, cmd);
 			if (prev_fd != -1) { dup2(prev_fd, 0); close(prev_fd); }
 			if (cmd->next) { close(pipe_fd[0]); dup2(pipe_fd[1], 1); close(pipe_fd[1]); }
@@ -610,7 +596,7 @@ int main(int argc, char **argv, char **envp)
 	char *input;
 
 	signal(SIGINT, handle_sigint);  
-	signal(SIGQUIT, handle_sigquit);       
+	signal(SIGQUIT, SIG_IGN);       
 
 	while (1) {
 		g_in_child = 0;
