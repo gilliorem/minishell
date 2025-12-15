@@ -85,6 +85,7 @@
 ** Fixed dependency order and Parser logic
 */
 
+#include "libft/libft.h"
 #include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -442,8 +443,17 @@ t_token *new_token(char *value, t_tokentype type) {
     t_token *token = malloc(sizeof(t_token)); token->value = value; token->type = type; token->next = NULL; return token;
 }
 
-void add_token_back(t_token **list, t_token *new) {
-    if (!*list) *list = new; else { t_token *c = *list; while (c->next) c = c->next; c->next = new; }
+void add_token_back(t_token **list, t_token *new) 
+{
+	if (!*list)
+		*list = new;
+	else 
+	{
+		t_token *c = *list;
+		while (c->next)
+			c = c->next;
+		c->next = new;
+	}
 }
 
 t_token *lexer(char *input) {
@@ -868,84 +878,71 @@ void update_pwd(t_env *env, char *pwd)
     update_env(env, pwd, cwd);
 }
 
+/* CD BLOCK STARTING HERE */
+
 int	cd_argument(t_cmd *cmd)
 {
 	if (cmd->argv[1] && cmd->argv[2])
 	{
-		write(2, "minishell: cd: too many arguments\n", 34);
+		ft_putstr_fd("minishell: cd: too many arguments\n", 2);
 		return (0);
 	}
 	return (1);
 }
 
-char	*cd_home(t_cmd *cmd, t_env *env, char **oldpwd)
+char	*cd_home(t_cmd *cmd, t_env *env)
 {
-	char	*target_path;
+	char	*home;
 
-	target_path = get_env_val(env, "HOME");
-	if (!target_path)
+	home = get_env_val(env, "HOME");
+	if (!home)
 	{
-		write(2, "minishell: cd: HOME not set\n", 28);
-		if (*oldpwd)
-			free(*oldpwd);
+		ft_putstr_fd("minishell: cd: HOME not set\n", 2);
+		return (NULL);
 	}
-	return (target_path);
+	return (ft_strdup(home));
+}
+
+char	*cd_oldpwd(t_env *env)
+{
+	char	*oldpwd;
+
+	oldpwd = get_env_val(env, "OLDPWD");
+	if (!oldpwd)
+	{
+		ft_putstr_fd("minishell: cd: OLDPWD not set\n", 2);
+		return (NULL);
+	}
+	printf("%s\n", oldpwd);
+	return (ft_strdup(oldpwd));
 }
 
 int ft_cd(t_cmd *cmd, t_env *env)
 {
 	char	*target_path;
-	char	*oldpwd;
 
-	target_path = NULL;
-	oldpwd = get_env_val(env, "OLDPWD");
-	if (!cd_argument(cmd))
+	if (!cd_argument(cmd)) 
+		return (1);
+	if (!cmd->argv[1] || strcmp(cmd->argv[1], "~") == 0)
+		target_path = cd_home(cmd, env);
+	else if (ft_strcmp(cmd->argv[1], "-") == 0)
+		target_path = cd_oldpwd(env); 
+	else
+		target_path = ft_strdup(cmd->argv[1]);
+	if (!target_path)
 		return (1);
 	update_pwd(env, "OLDPWD");
-	
-	   if (!cmd->argv[1] || strcmp(cmd->argv[1], "~") == 0)
-	   {
-	   	target_path = get_env_val(env, "HOME");
-	   	if (!target_path)
-		{
-		   write(2, "minishell: cd: HOME not set\n", 28);
-	   		if (oldpwd)
-	   			free(oldpwd);
-	   		return (1);
-	   }
-	}
-
-//	if (!cmd->argv[1] || strcmp(cmd->argv[1], "~") == 0)
-//		target_path = cd_home(cmd, env, &oldpwd);
-//	if (!target_path)
-//		return (1);
-	else if (strcmp(cmd->argv[1], "-") == 0)
+	if (chdir(target_path) != 0)
 	{
-		target_path = oldpwd; 
-		if (!target_path)
-		{
-			write(2, "minishell: cd: OLDPWD not set\n", 30);
-			return (1);
-		}
-		printf("%s\n", target_path);
-	   }
-	   else
-		target_path = ft_strdup(cmd->argv[1]);
-	   if (chdir(target_path) != 0)
-	   {
 		perror("minishell: cd");
-		if (target_path && target_path != oldpwd) free(target_path);
-		if (oldpwd) 
-			free(oldpwd);
-		return (1);
-	   }
-	update_pwd(env, "PWD");
-	if (target_path && target_path != oldpwd) 
 		free(target_path);
-	if (oldpwd) 
-		free(oldpwd);
-	return 0;
+		return (1);
+	}
+	update_pwd(env, "PWD");
+	free(target_path);
+	return (0);
 }
+/* FT_CD ENDING HERE */
 
 void ft_exit(t_cmd *cmd)
 {
@@ -968,28 +965,56 @@ void ft_exit(t_cmd *cmd)
 	exit (exit_code % 256);
 }
 
-int ft_echo(t_cmd *cmd)
+/* Echo block */
+int	is_new_line(char *arg)
 {
-	int i = 1; bool newline = true;
-	while (cmd->argv[i] && cmd->argv[i][0] == '-' && cmd->argv[i][1] == 'n')
-	{ int j = 1; char *n_str = cmd->argv[i]; n_str++; int n_flag = 1; int k = 0;
-		while (n_str[k] && n_flag == 1)
-		{ if (n_str[k] != 'n') { n_flag = 0; } k++; }
-		if (n_flag == 0) { break; }
-		while (cmd->argv[i] && cmd->argv[i][j] == 'n') j++;
-		i++; newline = false;
-	}
-	while (cmd->argv[i])
-	{ if (write(1, cmd->argv[i], strlen(cmd->argv[i])) == -1) { printf("minishell: echo: cannot write here\n"); return (1); } if (cmd->argv[i + 1]) write(1, " ", 1); i++; }
-	if (newline) write(1, "\n", 1); return (0);
+	int	i;
+
+	i = 1;
+	if (arg[0] != '-' || arg[1] == '\0')
+		return (0);
+	while (arg[i] == 'n')
+		i++;
+	if (arg[i] != '\0')
+		return (0);
+	return (1);
 }
 
-void print_env_list(t_env **env_head) 
+int	ft_echo(t_cmd *cmd)
 {
-       	t_env *tmp = *env_head;
+	bool	newline;
+	int	i;
+
+	newline = true;
+	i = 1;
+	while (cmd->argv[i])
+	{
+		if (!is_new_line(cmd->argv[i]))
+			break;
+		newline = false;
+		i++;	
+	}
+	while (cmd->argv[i])
+	{
+		ft_putstr_fd(cmd->argv[i], 1);
+		if (cmd->argv[i + 1]) 
+			write(1, " ", 1);
+		i++;
+	}
+	if (newline)
+		ft_putstr_fd("\n", 1);
+	return (0);
+}
+/* End of echo block */
+
+void	print_env_list(t_env **env_head) 
+{
+	t_env *tmp;
+       
+	tmp = *env_head;
        	while (tmp)
        	{
-		if (strcmp(tmp->value, "") == 0)
+		if (ft_strcmp(tmp->value, "") == 0)
 			printf("declare -x %s=\"\"\n", tmp->key);
 		else
 			printf("declare -x %s=\"%s\"\n", tmp->key, tmp->value);
@@ -997,58 +1022,119 @@ void print_env_list(t_env **env_head)
        	}
 }
 
-int check_first_char (char c)
+int	check_first_char (char c)
 {
-    if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c == '_'))
-        return (1);
+    if ((c >= 'a' && c <= 'z') 
+	|| (c >= 'A' && c <= 'Z') || (c == '_'))
+	    return (1);
     return (0);
 }
 
-int check_key(char *key) { int i; i = 0; while (key[i]) { if (ft_isdigit(key[i])) { i++; continue; } if (ft_isalpha_underscore(key[i]) == 0) { printf("minishell: export: '%s': not a valid identifier\n", key); return (0); } i++; } return (1); }
-
-int ft_export(t_cmd *cmd, t_env **env_head) 
+int	check_key(char *key)
 {
+       	int	i;
+
+       	i = 0;
+	while (key[i])
+       	{
+	       	if (ft_isdigit(key[i]))
+	       	{
+		       	i++;
+		       	continue;
+	       	}
+	       	if (ft_isalpha_underscore(key[i]) == 0) 
+		{
+			printf("minishell: export: '%s': not a valid identifier\n", key);
+		       	return (0);
+	       	}
+	       	i++;
+       	}
+       	return (1);
+}
+
+t_env	*add_envback(t_env **env_head, t_env *new)
+{
+	if (!*env_head)
+		*env_head = new;
+	else 
+	{
+		t_env *tmp = *env_head;
+		while (tmp->next)
+			tmp = tmp->next;
+		tmp->next = new;
+	}
+	return (*env_head);
+}
+
+int	export_key_as_var(char *keyvar, t_env **env_head)
+{
+	int	i;
+	t_env	*no_value_node;
+	
+	i = 0;
+	if (!check_key(keyvar))
+		return (0);
+	no_value_node =  new_env_node(keyvar, ft_strdup(""));
+	add_envback(env_head, no_value_node);
+	return (1);
+}
+
+int	export_value(char *value, char *key, t_env **env_head)
+{
+	t_env	*new_node;
+
+	if (!check_key(key))
+		return (0);
+	if (!update_env(*env_head, key, value))
+	{
+		new_node = new_env_node(key, ft_strdup(value));
+		add_envback(env_head, new_node);
+	}
+	return (1);
+}
+
+int	ft_export(t_cmd *cmd, t_env **env_head) 
+{
+	char	*arg;
+	char	*eq_pos;
+	char	*key;
+	char	*value;
+//	t_env	*new_node;
+//	t_env	*no_value_node;
+//	t_env	*tmp;
+	int	i;
+
+	i = 1;
 	if (!cmd->argv[1])
 	       	print_env_list(env_head);
-	for (int i = 1; cmd->argv[i]; i++)
+	for (i = 1; cmd->argv[i]; i++)
 	{ 
-		char *arg = cmd->argv[i];
+		arg = cmd->argv[i];
 	       	if (check_first_char(arg[0]) == 0)
 		{
 		       	printf("minishell: export: '%s' not a valid identifier\n", arg);
 		       	return (1); 
 		}
-		char *eq_pos = strchr(arg, '=');
+		eq_pos = strchr(arg, '=');
 		if (!eq_pos) 
-		{
-		       	if (!check_key(arg))
-			       	return (0); 
-			char *key = ft_substr(arg, 0, ft_strlen(arg));
-			t_env *no_value_node = new_env_node(key, ft_strdup(""));
-			if (!*env_head)
-				*env_head = no_value_node;
-			else 
-			{
-				t_env *tmp = *env_head;
-				while (tmp->next)
-					tmp = tmp->next;
-				tmp->next = no_value_node;
-			}
-		}
+			if (!export_key_as_var(ft_strdup(arg), env_head))
+				return (0);
 		if (eq_pos) 
 		{
-		       	char *key = ft_substr(arg, 0, eq_pos - arg);
+		       	key = ft_substr(arg, 0, eq_pos - arg);
 			if (!check_key(key))
 			       	return (0);
-			char *value = eq_pos + 1;
+			value = eq_pos + 1;
+			export_value(value, key, env_head);
+			/*
 			if (!update_env(*env_head, key, value))
 		       	{
-			       	t_env *new_node = new_env_node(key, ft_strdup(value));
+			       	new_node = new_env_node(key, ft_strdup(value));
 			       	if (!*env_head)
 				       	*env_head = new_node;
 			       	else 
 				{
-				       	t_env *tmp = *env_head;
+				       	tmp = *env_head;
 				       	while (tmp->next)
 					       	tmp = tmp->next;
 				       	tmp->next = new_node;
@@ -1056,6 +1142,7 @@ int ft_export(t_cmd *cmd, t_env **env_head)
 		       	} 
 			else 
 				free(key);
+			*/
 	       	}
        	}
       	return (0);
