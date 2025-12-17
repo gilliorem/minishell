@@ -1300,7 +1300,10 @@ void	execute_parent_builtin(t_cmd *cmd, t_env *env)
 	if (cmd && !cmd->next && cmd->argv && cmd->argv[0])
 	{
 		if (ft_strcmp(cmd->argv[0], "exit") == 0)
+		{
+			clean_on_exit(cmd, env);
 			ft_exit(cmd, env); // need to clean up when exiting.
+		}
 		else if (ft_strcmp(cmd->argv[0], "export") == 0 && cmd->argv[1])
 		{
 			g_exit_status = ft_export(cmd, &env);
@@ -1317,6 +1320,26 @@ void	execute_parent_builtin(t_cmd *cmd, t_env *env)
 			return ;
 		}
 	}
+}
+
+int	execute_children_builtin(t_cmd *cmd, t_env *env)
+{
+	int	ret;
+
+	ret = 0;
+	if (strcmp(cmd->argv[0], "env") == 0) 
+		ft_env(env);
+	else if (strcmp(cmd->argv[0], "pwd") == 0)
+		ft_pwd();
+	else if (strcmp(cmd->argv[0], "echo") == 0)
+		ret = ft_echo(cmd);
+	else if (strcmp(cmd->argv[0], "cd") == 0) 
+		ret = ft_cd(cmd, env);
+	else if (strcmp(cmd->argv[0], "export") == 0) 
+		ret = ft_export(cmd, &env);
+	else if (strcmp(cmd->argv[0], "unset") == 0)
+		ret = ft_unset(cmd, &env);
+	return (ret);
 }
 
 // connect the pipes between the i cmd (2 or more)
@@ -1389,9 +1412,7 @@ void executor(t_cmd *cmd_list, t_env *env)
 	{ 
             signal(SIGINT, SIG_DFL);
             signal(SIGQUIT, SIG_DFL);
-
             close_unused_heredoc_fds(cmd_list, cmd);
-
             if (prev_fd != -1) 
 	    {
 		    dup2(prev_fd, 0);
@@ -1433,8 +1454,12 @@ void executor(t_cmd *cmd_list, t_env *env)
                 r = r->next;
             }
 
-            if (!cmd->argv[0]) exit(0);
-
+            if (!cmd->argv[0])
+	    {
+		    clean_on_exit(cmd, env);
+		    exit(0);
+	    } 
+	    /*
             if (strcmp(cmd->argv[0], "env") == 0) 
 	    {
 		    ft_env(env);
@@ -1450,6 +1475,11 @@ void executor(t_cmd *cmd_list, t_env *env)
 	    } 
 	    else if (strcmp(cmd->argv[0], "export") == 0) { int ret = ft_export(cmd, &env);clean_on_exit(cmd, env); exit(ret); }
             else if (strcmp(cmd->argv[0], "unset") == 0) { int ret = ft_unset(cmd, &env);clean_on_exit(cmd, env); exit(ret); }
+	    */
+	    //int child_builtin_ret = 0;
+	    g_exit_status = execute_children_builtin(cmd, env);
+	    //clean_on_exit(cmd, env);
+	    //exit (child_builtin_ret);
             char *path = get_command_path(cmd->argv[0], env);
             if (!path) { 
                 write(2, "minishell: command not found: ", 30);
