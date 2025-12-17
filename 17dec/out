@@ -1,0 +1,6 @@
+Command 'catt' not found, did you mean:
+  command 'catm' from deb mescc-tools (1.3-2)
+  command 'catty' from deb node-catty (0.1.0-1)
+  command 'cat' from deb coreutils (8.32-4.1ubuntu1.2)
+  command 'ratt' from deb ratt (0.0~git20190123.9e77a6d-1ubuntu0.22.04.1)
+Try: apt install <deb name>
