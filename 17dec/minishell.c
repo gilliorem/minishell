@@ -1054,7 +1054,6 @@ int	is_new_line(char *arg)
 		return (0);
 	return (1);
 }
-
 int	ft_echo(t_cmd *cmd)
 {
 	bool	newline;
@@ -1077,10 +1076,9 @@ int	ft_echo(t_cmd *cmd)
 		i++;
 	}
 	if (newline)
-		ft_putstr_fd("\n", 1);
+		ft_putchar_fd('\n', 1);
 	return (0);
 }
-/* End of echo block */
 
 void	print_env_list(t_env **env_head) 
 {
@@ -1297,7 +1295,7 @@ char	*get_command_path(char *cmd, t_env *env)
 
 void	execute_parent_builtin(t_cmd *cmd, t_env *env)
 {
-	if (cmd && !cmd->next && cmd->argv && cmd->argv[0])
+if (cmd && !cmd->next && cmd->argv && cmd->argv[0])
 	{
 		if (ft_strcmp(cmd->argv[0], "exit") == 0)
 		{
@@ -1307,30 +1305,82 @@ void	execute_parent_builtin(t_cmd *cmd, t_env *env)
 		else if (ft_strcmp(cmd->argv[0], "export") == 0 && cmd->argv[1])
 		{
 			g_exit_status = ft_export(cmd, &env);
-			return ;
 		}
 		else if (ft_strcmp(cmd->argv[0], "unset") == 0)
 		{
 			g_exit_status = ft_unset(cmd, &env);
-			return ;
 		}
 		else if (ft_strcmp(cmd->argv[0], "cd") == 0)
 		{
 			g_exit_status = ft_cd(cmd, env);
-			return ;
 		}
 	}
+}
+
+int	on_fork_error(pid_t last_pid)
+{
+	if (last_pid == -1)
+	{
+		perror("fork");
+		return 0;
+	}
+	return (1);
+}
+
+void	close_pipes(int pipe_fd[2])
+{
+	close(pipe_fd[0]);
+	dup2(pipe_fd[1], 1);
+	close(pipe_fd[1]);
+}
+
+void	spawn_child(pid_t last_pid, t_cmd *cmd_list, int pipe_fd[2], int prev_fd)
+{
+//	pid_t	last_pid;
+	t_cmd *cmd;
+       
+	cmd = cmd_list;
+	signal(SIGINT, SIG_DFL);
+	signal(SIGQUIT, SIG_DFL);
+	close_unused_heredoc_fds(cmd_list, cmd);
+	if (prev_fd != -1) 
+	{
+		dup2(prev_fd, 0);
+		close(prev_fd); 
+	}
+}
+
+void	check_first_cmd(t_cmd *cmd, t_env *env)
+{
+	if (!cmd->argv[0])
+	{
+		clean_on_exit(cmd, env);
+		exit(0);
+	} 
+}
+
+void	on_neg_ret(int ret, t_cmd *cmd, t_env *env)
+{
+	g_exit_status = ret;
+	clean_on_exit(cmd, env);
+	exit(g_exit_status);
 }
 
 int	execute_children_builtin(t_cmd *cmd, t_env *env)
 {
 	int	ret;
 
-	ret = 0;
+	ret = -1;
 	if (strcmp(cmd->argv[0], "env") == 0) 
+	{
+		ret = 0;
 		ft_env(env);
+	}
 	else if (strcmp(cmd->argv[0], "pwd") == 0)
+	{
+		ret = 0;
 		ft_pwd();
+	}
 	else if (strcmp(cmd->argv[0], "echo") == 0)
 		ret = ft_echo(cmd);
 	else if (strcmp(cmd->argv[0], "cd") == 0) 
@@ -1340,6 +1390,53 @@ int	execute_children_builtin(t_cmd *cmd, t_env *env)
 	else if (strcmp(cmd->argv[0], "unset") == 0)
 		ret = ft_unset(cmd, &env);
 	return (ret);
+}
+
+void	exit_on_command_not_found(t_cmd *cmd, t_env *env)
+{
+	write(2, "minishell: command not found: ", 30);
+	write(2, cmd->argv[0], strlen(cmd->argv[0]));
+	write(2, "\n", 1);
+	clean_on_exit(cmd, env);
+	exit(127); 
+}
+
+void	execute_child(t_cmd *cmd, t_env *env)
+{
+	char	*path;
+	char	**env_arr;
+
+	path = get_command_path(cmd->argv[0], env);
+	if (!path)
+		exit_on_command_not_found(cmd, env);
+	env_arr = env_list_to_tab(env);
+	execve(path, cmd->argv, env_arr);
+	perror(cmd->argv[0]);
+	clean_on_exit(cmd, env);
+	free(path);
+	exit(127);
+}
+
+void	wait_for_child(pid_t last_pid)
+{
+    pid_t	wpid;
+    int		status;
+    
+    while ((wpid = wait(&status)) > 0)
+    {
+        if (wpid == last_pid)
+        {
+            if (WIFEXITED(status))
+                g_exit_status = WEXITSTATUS(status);
+        }
+	if (WTERMSIG(status))
+	{
+		g_exit_status = WTERMSIG(status) + 128;
+		// check if allowed function else Remi to rewrite 
+        if (WCOREDUMP(status))
+			write(2, "Quit (core dumped)\n",19);
+	}
+    }
 }
 
 // connect the pipes between the i cmd (2 or more)
@@ -1375,6 +1472,63 @@ void	pipeline_orchestration(t_cmd *cmd, t_cmd *cmd_list, int prev_fd, int pipe_f
 	//update_status()
 }
 
+void	apply_redirection(t_cmd *cmd, t_env *env)
+{
+	int	fd; 
+	t_redir	*r;
+
+	r = cmd->redirections;
+	fd = -1;
+	while (r)
+	{
+		if (r->type == TOKEN_REDIR_OUT) 
+			fd = open(r->filename, O_WRONLY|O_CREAT|O_TRUNC, 0644);
+		else if (r->type == TOKEN_REDIR_APPEND) 
+			fd = open(r->filename, O_WRONLY|O_CREAT|O_APPEND, 0644);
+		else if (r->type == TOKEN_REDIR_IN)
+			fd = open(r->filename, O_RDONLY);
+		else if (r->type == TOKEN_HEREDOC)
+			fd = r->heredoc_fd;
+		if (fd < 0)
+	       	{
+		       	perror(r->filename); 
+			clean_on_exit(cmd, env);
+			exit(1);
+		}
+		if (r->type == TOKEN_REDIR_IN || r->type == TOKEN_HEREDOC)
+			dup2(fd, STDIN_FILENO);
+		else
+			dup2(fd, STDOUT_FILENO);
+		if (r->type != TOKEN_HEREDOC) 
+			close(fd); 
+		r = r->next;
+	}
+}
+
+void	process_child(t_cmd *cmd, t_env *env)
+{
+	int ret;
+
+	apply_redirection(cmd, env);
+	check_first_cmd(cmd, env);
+	ret = execute_children_builtin(cmd, env);
+	if (ret != -1)
+		on_neg_ret(ret, cmd, env);
+	execute_child(cmd, env);
+}
+
+void	cleanup_parent(t_cmd **cmd, int pipe_fd[2], int *prev_fd)
+{
+	if (*prev_fd != -1)
+		close(*prev_fd);
+	if ((*cmd)->next)
+	{
+		close(pipe_fd[1]);
+		*prev_fd = pipe_fd[0];
+	}
+	*cmd = (*cmd)->next;
+}
+
 /* executor
 └── run_parent_builtin_if_needed
 └── pipeline_orchestration
@@ -1388,139 +1542,35 @@ void	pipeline_orchestration(t_cmd *cmd, t_cmd *cmd_list, int prev_fd, int pipe_f
 └── wait_and_update_status
 */
 
-
 void executor(t_cmd *cmd_list, t_env *env)
 {
     int pipe_fd[2]; 
     int prev_fd = -1;  // there is no previous cmd output to read from
     t_cmd *cmd = cmd_list;
-    int status = 0;
-    execute_parent_builtin(cmd_list, env);
+//    int	ret;
 
+    execute_parent_builtin(cmd_list, env);
     pid_t last_pid = 0;
     while (cmd) 
     {
-        if (cmd->next) 
-		pipe(pipe_fd);
-        last_pid = fork();
-        if (last_pid == -1) 
-	{
-	       	perror("fork");
-	       	return;
-       	}
-        if (last_pid == 0) 
-	{ 
-            signal(SIGINT, SIG_DFL);
-            signal(SIGQUIT, SIG_DFL);
-            close_unused_heredoc_fds(cmd_list, cmd);
-            if (prev_fd != -1) 
-	    {
-		    dup2(prev_fd, 0);
-		    close(prev_fd); 
+	    if (cmd->next) 
+		    pipe(pipe_fd);
+	    last_pid = fork();
+	    if (on_fork_error(last_pid) == 0)
+		    return ;
+	    if (last_pid == 0) 
+	    { 
+		    spawn_child(last_pid, cmd_list, pipe_fd, prev_fd);
+		    if (cmd->next) 
+			    close_pipes(pipe_fd);
+		    process_child(cmd, env);
 	    }
-            if (cmd->next) 
-	    {
-		    close(pipe_fd[0]);
-		    dup2(pipe_fd[1], 1);
-		    close(pipe_fd[1]);
-	    }
-            t_redir *r = cmd->redirections;
-            while (r) 
-	    {
-                int fd = -1;
-                if (r->type == TOKEN_REDIR_OUT) 
-		{
-                    fd = open(r->filename, O_WRONLY|O_CREAT|O_TRUNC, 0644);
-                }
-                else if (r->type == TOKEN_REDIR_APPEND) 
-		{
-                    fd = open(r->filename, O_WRONLY|O_CREAT|O_APPEND, 0644);
-                }
-                else if (r->type == TOKEN_REDIR_IN) {
-                    fd = open(r->filename, O_RDONLY);
-                }
-                else if (r->type == TOKEN_HEREDOC) {
-                    fd = r->heredoc_fd;
-                }
-
-                if (fd < 0) { perror(r->filename); exit(1); }
-
-                if (r->type == TOKEN_REDIR_IN || r->type == TOKEN_HEREDOC)
-                    dup2(fd, STDIN_FILENO);
-                else
-                    dup2(fd, STDOUT_FILENO);
-
-                if (r->type != TOKEN_HEREDOC) close(fd); 
-                r = r->next;
-            }
-
-            if (!cmd->argv[0])
-	    {
-		    clean_on_exit(cmd, env);
-		    exit(0);
-	    } 
-	    /*
-            if (strcmp(cmd->argv[0], "env") == 0) 
-	    {
-		    ft_env(env);
-		    clean_on_exit(cmd, env);
-		    exit(0); 
-	    }
-            else if (strcmp(cmd->argv[0], "pwd") == 0) { ft_pwd(); clean_on_exit(cmd, env);exit(0); }
-            else if (strcmp(cmd->argv[0], "echo") == 0) { ft_echo(cmd);clean_on_exit(cmd, env); exit(0); }
-            else if (strcmp(cmd->argv[0], "cd") == 0) 
-	    {
-		    clean_on_exit(cmd, env);
-		    exit(0); 
-	    } 
-	    else if (strcmp(cmd->argv[0], "export") == 0) { int ret = ft_export(cmd, &env);clean_on_exit(cmd, env); exit(ret); }
-            else if (strcmp(cmd->argv[0], "unset") == 0) { int ret = ft_unset(cmd, &env);clean_on_exit(cmd, env); exit(ret); }
-	    */
-	    //int child_builtin_ret = 0;
-	    g_exit_status = execute_children_builtin(cmd, env);
-	    //clean_on_exit(cmd, env);
-	    //exit (child_builtin_ret);
-            char *path = get_command_path(cmd->argv[0], env);
-            if (!path) { 
-                write(2, "minishell: command not found: ", 30);
-                write(2, cmd->argv[0], strlen(cmd->argv[0]));
-                write(2, "\n", 1);
-		clean_on_exit(cmd, env);
-                exit(127); 
-            }
-
-            char **env_arr = env_list_to_tab(env);
-            execve(path, cmd->argv, env_arr);
-            perror(cmd->argv[0]); 
-	    clean_on_exit(cmd, env);
-	    free(path);
-            exit(127);
-        }
-        else {
-            if (prev_fd != -1) close(prev_fd);
-            if (cmd->next) { close(pipe_fd[1]); prev_fd = pipe_fd[0]; }
-            cmd = cmd->next;
-        }
+	    else 
+		    cleanup_parent(&cmd, pipe_fd, &prev_fd);
     }
-
-    if (prev_fd != -1) close(prev_fd); 
-
-    pid_t wpid;
-    while ((wpid = wait(&status)) > 0)
-    {
-        if (wpid == last_pid)
-        {
-            if (WIFEXITED(status))
-                g_exit_status = WEXITSTATUS(status);
-        }
-	if (WTERMSIG(status))
-	{
-		g_exit_status = WTERMSIG(status) + 128;
-		// check if allowed function else Remi to rewrite 
-        if (WCOREDUMP(status))
-			write(2, "Quit (core dumped)\n",19);
-	}
-    }
+    if (prev_fd != -1) 
+	    close(prev_fd); 
+    wait_for_child(last_pid);
 }
 
 int main(int argc, char **argv, char **envp)
