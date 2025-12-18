@@ -1,16 +1,16 @@
 /* MEMORY ISSUES */
-/* In case of cmd error such as: `cd | ls` quotes, parser, new_cmd, init_environment  */
-
+/* In case of cmd error such as: `cd | ls` quotes,
+ * parser, new_cmd, init_environment  */
 /*Eric tests
-  >>>readline suppression (valgrind file; not take into account readline leaks) [X]
-
+  >>>readline suppression (valgrind file;
+  not take into account readline leaks) [X]
   EXIT STATUS
- *Thoughts: Need a global variable that keeps track of our exit code... and we try to get read of g_inchild*
+ *Thoughts: Need a global variable that keeps track of our exit code...
+ and we try to get read of g_inchild*
  $? ON CONTROL C []
  -$?
  ctrl c
  echo $?
-
  exit text [X]
  exit 42 [X]
  exit -1 [X]
@@ -20,47 +20,39 @@
  exit -09876543 [X]
  exit 765445678976543456787654345675467876564
  sleep 10 | ls
-
  change the printf with write_fd (libft)
-
  - BUILTINS (Remi)
  export test`1` [X] // should work catch integer. only first char
-
  SHLVL ++ as we open new instances of anyshell [X]
-
  - edge case for echo
  echo hi > /dev/full [X]
  should prompt: `bash: echo: write error: no space left on device`
-
  - REDIR combining redirections 
  double << <<
  combining << << and >
  2+ redir in
  < file < file2 cat // should read from file 2 only
-
  > new cat << hi << hello
  needs to exit typing
  `hi`
  `hello`
-
- echo hello > f1 > f2  // shoud have hello in f2 last one should get the input, the other will be blank
-
- << and quotes: cat << "HI" : same rules apply here and echo // should exit HI
-
+ echo hello > f1 > f2  // shoud have hello in f2 
+last one should get the input, the other will be blank
+ << and quotes: cat << "HI" : same rules apply here and echo 
+// should exit HI
  - EXECUTION mixing builtins and binaries (Mohid)
-
  export | head
- ls | cd .. // should run but not change dir because executing in the child process
+ ls | cd .. // should run but not change dir because 
+	    // executing in the child process
  cd | ls
  ls |      // make sure the pipe fd is closed
  */
-
-
 // Failed tests
 // cd OLDPWD state [X] - Remi
 // export with no args [x] - Remi
 // $? (mohid) [X]
-// builtins return value (1 on failure, 0 on success to match with $) [X]
+// builtins return value (1 on failure,
+// 0 on success to match with $) [X]
 // cd can take only 0 or 1 argument. [X]
 // update the $PWD [X] - Remi
 // update the $OLDPWD [X] Remi
@@ -69,17 +61,16 @@
 // unset a b [X] 
 // export a=1 b=2 [X]
 // export identifier [X]
-
 //Crazy heredoc tests:
 // cat <<HERE <<DOC
 // cat <<HERE (Inside $USER should be expanded)
 // cat <minishell.c <<HERE | cat
 // cat << $
-
 /* ** COMPLETE MINISHELL.C 
 ** Fixed dependency order and Parser logic
 */
 
+/*
 #include "libft/libft.h"
 #include <errno.h>
 #include <stdbool.h>
@@ -94,55 +85,69 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 #include <signal.h>
+*/
 
-typedef enum e_tokentype { 
-    TOKEN_WORD, TOKEN_PIPE, TOKEN_REDIR_IN, TOKEN_REDIR_OUT, TOKEN_REDIR_APPEND, TOKEN_HEREDOC 
+#include "minishell.h"
+
+/*
+typedef enum e_tokentype {
+    TOKEN_WORD,
+    TOKEN_PIPE,
+    TOKEN_REDIR_IN,
+    TOKEN_REDIR_OUT,
+    TOKEN_REDIR_APPEND,
+    TOKEN_HEREDOC 
 } t_tokentype;
 
-typedef struct s_token { 
-    char *value; 
-    t_tokentype type; 
-    struct s_token *next; 
-} t_token;
+typedef struct s_token
+{ 
+    char		*value; 
+    t_tokentype		type; 
+    struct s_token	*next; 
+} 			t_token;
 
-typedef struct s_redir { 
-    char *filename; 
-    t_tokentype type; 
-    int heredoc_fd; 
-    int heredoc_quoted;
-    struct s_redir *next; 
-} t_redir;
+typedef struct s_redir 
+{ 
+    struct	s_redir *next; 
+    t_tokentype	type; 
+    char	*filename; 
+    int		heredoc_fd; 
+    int		heredoc_quoted;
+} 		t_redir;
 
-typedef struct s_cmd { 
-    char **argv; 
-    t_redir *redirections; 
-    struct s_cmd *next; 
-} t_cmd;
+typedef struct s_cmd
+{ 
+    struct s_cmd	*next; 
+    t_redir		*redirections; 
+    char		**argv; 
+}			 t_cmd;
 
-typedef struct s_env { 
-    char *key; 
-    char *value; 
-    struct s_env *next; 
-} t_env;
+typedef struct s_env
+{ 
+    struct s_env	*next; 
+    char		*key; 
+    char		*value; 
+}			t_env;
 
 int g_exit_status = 0;
+*/
+int	g_exit_status;
 
-void handle_sigint(int sig)
+void	handle_sigint(int sig)
 {
 	extern unsigned long	rl_readline_state;
- 	g_exit_status = 128 + sig;
+
+	g_exit_status = 128 + sig;
 	write(1, "\n", 1);
 	rl_on_new_line();
 	rl_replace_line("", 0);
 	if (rl_readline_state & RL_STATE_READCMD)
-	{
 		rl_redisplay();
-	}
 }
 
 int	init_signal(int signal, void(*f)(int s))
 {
-	struct sigaction sa;
+	struct sigaction	sa;
 
 	sa.sa_handler = f;
 	sa.sa_flags = SA_RESTART;
@@ -151,23 +156,22 @@ int	init_signal(int signal, void(*f)(int s))
 		return (1);
 	return (0);
 }
-void handle_sigint_heredoc(int sig);
-void set_heredoc_signals(void)
+void	handle_sigint_heredoc(int sig);
+void	set_heredoc_signals(void)
 {
-    struct sigaction sa;
+	struct sigaction	sa;
 
-    sa.sa_handler = handle_sigint_heredoc;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0;
-    sigaction(SIGINT, &sa, NULL);
-
-    signal(SIGQUIT, SIG_IGN);
+	sa.sa_handler = handle_sigint_heredoc;
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = 0;
+	sigaction(SIGINT, &sa, NULL);
+	signal(SIGQUIT, SIG_IGN);
 }
 
-void restore_signals(void)
+void	restore_signals(void)
 {
-    signal(SIGINT, handle_sigint);
-    signal(SIGQUIT, SIG_IGN);
+	signal(SIGINT, handle_sigint);
+	signal(SIGQUIT, SIG_IGN);
 }
 
 void handle_sigquit(int sig)
@@ -258,18 +262,6 @@ char **ft_split(char const *s, char c) {
     free(s1); 
     return ptr;
 }
-*/
-
-void free_split(char **arr) { 
-    int i=0; if (!arr) return; 
-    while(arr[i]) free(arr[i++]); 
-    free(arr); 
-}
-
-static int get_len(int n) {
-    int len=0; if(n<=0) len++; while(n){ n/=10; len++; } return len;
-}
-
 char *ft_itoa(int n) {
     int len = get_len(n);
     char *str = malloc(len + 1);
@@ -280,10 +272,39 @@ char *ft_itoa(int n) {
     while (n) { str[--len] = (n % 10) + '0'; n /= 10; }
     return str;
 }
+*/
 
-int is_number(char *s)
+void	free_split(char **arr)
+{ 
+	int	i;
+
+	i = 0;
+	if (!arr)
+		return; 
+	while (arr[i])
+		free(arr[i++]); 
+	free(arr); 
+}
+
+static int	get_len(int n)
 {
-    int i;
+	int	len;
+	
+	len = 0;
+	if (n <= 0)
+		len++;
+	while (n)
+	{
+		n /= 10;
+		len++;
+	}
+	return (len);
+}
+
+int	is_number(char *s)
+{
+    int	i;
+
     i = 0;
     while (s[i])
     {
@@ -296,122 +317,160 @@ int is_number(char *s)
     return (1);
 }
 
-int ft_isalpha_underscore(int c)
+int	ft_isalpha_underscore(int c)
 {
-    if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c == '_'))
+    if ((c >= 'a' && c <= 'z') || 
+	(c >= 'A' && c <= 'Z') || (c == '_'))
         return (1);
     return (0);
 }
 
-int ft_isdigit(int c)
+int	ft_isdigit(int c)
 {
     if (c >= '0' && c <= '9') return (1);
     return (0);
 }
+/* END OF LIBFT BLOCK */
 
-// from line 188 upto here is LIBFT
-
-t_env *new_env_node(char *key, char *value) 
+t_env	*new_env_node(char *key, char *value) 
 {
-    t_env *node = malloc(sizeof(t_env));
-    node->key = key; node->value = value; node->next = NULL;
-    return node;
+	t_env	*node;
+
+	node = malloc(sizeof(t_env));
+	node->key = key;
+	node->value = value;
+	node->next = NULL;
+	return (node);
 }
 
-void free_env_list(t_env *env) 
+void	free_env_list(t_env *env) 
 {
-    t_env *tmp;
-    while (env) 
-    { 
-        tmp = env->next; 
-        free(env->key); 
-        free(env->value); 
-        free(env); 
-        env = tmp; 
-    }
+	t_env	*tmp;
+	while (env) 
+	{ 
+		tmp = env->next; 
+		free(env->key); 
+		free(env->value); 
+		free(env); 
+		env = tmp; 
+	}
 }
 
 void    increment_shelvl(t_env **envp)
 {
-    int shlvl = 0;
-    t_env *node = *envp;
-    while (node->next != NULL)
-    {
-        if (strcmp(node->key, "SHLVL") == 0)
-        {
-            shlvl = atoi(node->value) + 1;
-            free(node->value);
-            node->value = ft_itoa(shlvl);
-        }
-        node = node->next;
-    }
+	int	shlvl;
+
+	shlvl = 0;
+	t_env *node;
+       
+	node = *envp;
+	while (node->next != NULL)
+	{
+		if (strcmp(node->key, "SHLVL") == 0)
+		{
+			shlvl = atoi(node->value) + 1;
+			free(node->value);
+			node->value = ft_itoa(shlvl);
+		}
+		node = node->next;
+	}
 }
 
-t_env *init_environment(char **envp) 
+t_env	*init_environment(char **envp) 
 {
-       	t_env *head = NULL;
-       	t_env *tail = NULL;
-       	int i = 0;
+	char	*key;
+	char	*value;
+	char	*eq_pos;
+	int	i;
+	t_env *head;
+	t_env *tail;
+
+	head = NULL;
+	tail = NULL;
+	i = 0;
 	if (!envp)
 	{
 		printf("empty env list\n");
-		return NULL;
+		return (NULL);
 	}
-       	while (envp[i]) {
-	       	char *eq_pos = strchr(envp[i], '=');
-	       	if (eq_pos) 
+	while (envp[i])
+	{
+		eq_pos = strchr(envp[i], '=');
+		if (eq_pos) 
 		{
-		       	char *key = ft_substr(envp[i], 0, eq_pos - envp[i]);
-		       	char *value = ft_strdup(eq_pos + 1);
-		       	t_env *new_node = new_env_node(key, value);
-		       	if (!head) 
+			key = ft_substr(envp[i], 0, eq_pos - envp[i]);
+			value = ft_strdup(eq_pos + 1);
+			t_env *new_node = new_env_node(key, value);
+			if (!head) 
 			{
-			       	head = new_node;
-			       	tail = head;
-		       	}
-		       	else 
+				head = new_node;
+				tail = head;
+			}
+			else 
 			{
 				tail->next = new_node;
 				tail = new_node;
-		       	}
-	       	}
-	       	i++;
-       	}
-       	return head;
+			}
+		}
+		i++;
+	}
+	return (head);
 }
 
-char *get_env_val(t_env *env, char *key) 
+char	*get_env_val(t_env *env, char *key) 
 {
     while (env) 
     { 
         if (strcmp(env->key, key) == 0) 
-            return ft_strdup(env->value); 
+            return (ft_strdup(env->value));
         env = env->next; 
     }
-    return NULL;
+    return (NULL);
 }
 
-char **env_list_to_tab(t_env *env) {
-    int count = 0; t_env *tmp = env; while (tmp) { count++; tmp = tmp->next; }
-    char **tab = malloc(sizeof(char *) * (count + 1)); int i = 0; tmp = env;
-    while (tmp) {
-        char *temp = ft_strjoin(tmp->key, "="); tab[i++] = ft_strjoin(temp, tmp->value); free(temp); tmp = tmp->next;
-    }
-    tab[i] = NULL; return tab;
-}
-
-t_env *populate_empty_envlist()
+char	**env_list_to_tab(t_env *env)
 {
-	t_env *node;
-	char cwd[1024];
+	char	**tab;
+	char	*temp;
+	int	count;
+	int	i;
+	t_env	*tmp;
 
-	char *key = ft_strdup("PWD");
-	char *value = ft_strdup(getcwd(cwd, sizeof(cwd)));
+	count = 0;
+	tmp = env;
+	while (tmp)
+	{
+		count++;
+		tmp = tmp->next;
+	}
+	tab = malloc(sizeof(char *) * (count + 1));
+	i = 0;
+	tmp = env;
+	while (tmp)
+	{
+		temp = ft_strjoin(tmp->key, "=");
+		tab[i++] = ft_strjoin(temp, tmp->value);
+		free(temp);
+		tmp = tmp->next;
+	}
+	tab[i] = NULL;
+	return (tab);
+}
+
+t_env	*populate_empty_envlist()
+{
+	char	cwd[1024];
+	char	*key;
+	char	*value;
+	t_env	*node;
+
+	key = ft_strdup("PWD");
+	value = ft_strdup(getcwd(cwd, sizeof(cwd)));
 	node = new_env_node(key, value);
 	return (node);
 }
 
-void ft_env(t_env *env) 
+void	ft_env(t_env *env) 
 {
        	while (env)
        	{
@@ -421,7 +480,7 @@ void ft_env(t_env *env)
        	}
 }
 
-int update_env(t_env *env, char *key, char *new_value) 
+int	update_env(t_env *env, char *key, char *new_value) 
 {
     while (env) 
     { 
@@ -429,18 +488,25 @@ int update_env(t_env *env, char *key, char *new_value)
         { 
             free(env->value);
             env->value = ft_strdup(new_value);
-            return 1;
+            return (1);
         }
         env = env->next; 
     }
-    return 0;
+    return (0);
 }
 
-t_token *new_token(char *value, t_tokentype type) {
-    t_token *token = malloc(sizeof(t_token)); token->value = value; token->type = type; token->next = NULL; return token;
+t_token	*new_token(char *value, t_tokentype type)
+{
+	t_token *token;
+
+	token = malloc(sizeof(t_token));
+	token->value = value;
+	token->type = type;
+	token->next = NULL;
+	return (token);
 }
 
-void add_token_back(t_token **list, t_token *new) 
+void	add_token_back(t_token **list, t_token *new) 
 {
 	if (!*list)
 		*list = new;
