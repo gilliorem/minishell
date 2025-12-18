@@ -1749,58 +1749,96 @@ void executor(t_cmd *cmd_list, t_env *env)
 
 /* EXECUTOR BLOCK ENDS HERE */
 
-int main(int argc, char **argv, char **envp)
+/* MAIN BLOCK STARTS */
+t_env	*init_shell_env(char **envp)
 {
-    (void)argc;
-    (void)argv;
-    t_env *env_list;
-    char	*input;
-   
-    env_list = init_environment(envp);
-    if (env_list)
-	    increment_shelvl(&env_list);
-    else
-	    env_list = populate_empty_envlist();
-    signal(SIGINT, handle_sigint);  
-    signal(SIGQUIT, SIG_IGN);       
-    while (1)
-    {
-        input = readline("MOGILLIO> ");
-        if (!input)
-       	{
-	       	printf("exit\n");
-	       	break;
-       	}
-        if (!*input) 
-	{
-	       	free(input);
-	       	continue;
-       	}
-        add_history(input);
-        
-	t_token *tok = lexer(input); 
-        free(input);
-        if (!tok)
-	       	continue;
-        
-        t_cmd *cmds = parser(tok);
-        free_tokens(tok);
-        if (!cmds)
-		continue;
+	t_env	*env_list;
 
-        expander(cmds, env_list);
-        handle_heredocs(cmds, env_list); 
+	env_list = init_environment(envp);
+	if (env_list)
+		increment_shelvl(&env_list);
+	else
+		env_list = populate_empty_envlist();
+	return (env_list);
+}
+
+char	*get_input(t_env *env)
+{
+	char	*input;
+
+	input = readline("MOGILLIO> ");
+	if (!input)
+	{
+		free_env_list(env);
+		printf("exit\n");
+		exit (g_exit_status);
+	}
+	if (*input != '\0')
+		add_history(input);
+	return (input);
+}
+/*
+t_token	*make_token_list(t_env *env, char *input)
+{
+	t_token	*token_list;
+
+	token_list = lexer(input); 
+	if (!token_list)
+		return (NULL);
+	return (token_list);
+}
+*/
+t_cmd	*make_cmds(char *input)
+{
+	t_token	*token_list;
+	t_cmd	*cmds;
+       
+	token_list = lexer(input);
+	if (!token_list)
+		return (NULL);
+	cmds = parser(token_list);
+	free_tokens(token_list);
+	return (cmds);
+}
+
+int	on_execution(t_cmd *cmds, t_env *env)
+{
+	expander(cmds, env);
+	handle_heredocs(cmds, env);
 	if (g_exit_status < 0)
 	{
 		g_exit_status = 130;
 		cleanup_heredocs(cmds);
-		free_cmd_list(cmds);
-		continue;
+		return (0);
 	}
-        executor(cmds, env_list);
-        cleanup_heredocs(cmds); 
-        free_cmd_list(cmds);
-    }
-    free_env_list(env_list);
-    return 0;
+	executor(cmds, env);
+	cleanup_heredocs(cmds);
+	return (1);
+}
+
+int	main(int argc, char **argv, char **envp)
+{
+	t_env	*env_list;
+	char	*input;
+	t_cmd	*cmd_list;
+
+	(void) argc;
+	(void) argv;
+	env_list = init_shell_env(envp);
+	signal(SIGINT, handle_sigint);
+	signal(SIGQUIT, SIG_IGN);
+	while (1)
+	{
+		input = get_input(env_list);
+		if (!*input && (free(input), 1))
+			continue ;
+		cmd_list = make_cmds(input);
+		free(input);
+		if (!cmd_list)
+			continue ;
+		on_execution(cmd_list, env_list);
+		free_cmd_list(cmd_list);
+	}
+	free_env_list(env_list);
+	return (0);
 }
