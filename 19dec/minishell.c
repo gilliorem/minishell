@@ -1,8 +1,3 @@
-// env -i ./a.out : need to be able to export variable [X]
-// add the _/last/cmd/ran variable
-
-//atoi from C library - change to ft_atoi
-
 /* MEMORY ISSUES */
 /* In case of cmd error such as: `cd | ls` quotes, parser, new_cmd, init_environment  */
 
@@ -568,7 +563,7 @@ int count_words_argv(t_token *t) {
     return c; 
 }
 
-void add_redir_back(t_redir **list, t_redir *new) 
+void	add_redir_back(t_redir **list, t_redir *new) 
 {
     if (!*list) 
     {
@@ -584,33 +579,42 @@ void add_redir_back(t_redir **list, t_redir *new)
     }
 }
 
-void free_redirs(t_redir *r) { 
-    t_redir *tmp; 
-    while(r) { 
-        tmp=r->next; 
+void	free_redirs(t_redir *r)
+{ 
+    t_redir	*tmp; 
+
+    while (r)
+    { 
+        tmp = r->next; 
         free(r->filename); 
         free(r); 
-        r=tmp; 
+        r = tmp; 
     } 
 }
 
-void free_cmd_list(t_cmd *c) { 
-    t_cmd *tmp; 
-    while(c) { 
-        tmp=c->next; 
-        int i=0; 
-        if(c->argv){
-            while(c->argv[i])
-	    {
-		    if (c->argv[i])
-			    free(c->argv[i++]);
-	    }
-            free(c->argv);
-        } 
-        if(c->redirections) free_redirs(c->redirections); 
-        free(c); 
-        c=tmp; 
-    } 
+void	free_cmd_list(t_cmd *c)
+{ 
+	t_cmd *tmp;
+	int	i;
+
+	while (c)
+	{ 
+		tmp=c->next; 
+		i = 0;
+		if (c->argv)
+		{
+			while (c->argv[i])
+			{
+				if (c->argv[i])
+					free(c->argv[i++]);
+			}
+			free(c->argv);
+		} 
+		if (c->redirections)
+			free_redirs(c->redirections); 
+		free(c); 
+		c = tmp; 
+	} 
 }
 
 static int	init_cmd_argv(t_cmd *cmd, t_token *tok)
@@ -709,6 +713,7 @@ t_cmd   *parser(t_token *tok)
 	t_cmd	*head;
 	t_cmd	*cur;
 	int		i;
+
 	if (!tok)
 		return (NULL);
 	head = create_initial_cmd(tok);
@@ -788,7 +793,15 @@ t_cmd   *parser(t_token *tok)
 }
 */
 
-char *get_env_val_wrapper(char *key, t_env *env) { char *v=get_env_val(env, key); return v ? v : ft_strdup(""); }
+char	*get_env_val_wrapper(char *key, t_env *env)
+{
+	char *v;
+
+	v = get_env_val(env, key);
+	if (!v)
+		return (ft_strdup(""));
+	return (v);
+}
 
 char *expand_heredoc_line(char *str, t_env *env)
 {
@@ -959,28 +972,32 @@ char *process_token(char *str, t_env *env, int *quote_found)
     return res;
 }
 
-void expander(t_cmd *cmd, t_env *env) 
+void	expander(t_cmd *cmd, t_env *env) 
 {
-    while(cmd) 
-    {
-        int i=0; 
-        while(cmd->argv && cmd->argv[i]) 
-        { 
-            cmd->argv[i] = process_token(cmd->argv[i], env, NULL);
-            i++;
-        }
-        t_redir *r = cmd->redirections;
-        while(r) 
-        {
-            int quote_found = 0;
-            r->filename = process_token(r->filename, env, &quote_found);
+	t_redir	*r;
+	int	quote_found;
+	int	i;
 
-            if (r->type == TOKEN_HEREDOC)
-                r->heredoc_quoted = quote_found;
-            r = r->next;
-        }
-        cmd = cmd->next;
-    }
+	r = cmd->redirections;
+	i = 0;
+	while(cmd) 
+	{
+		while(cmd->argv && cmd->argv[i]) 
+		{ 
+			cmd->argv[i] = process_token(cmd->argv[i], env, NULL);
+			i++;
+		}
+		while (r) 
+		{
+			quote_found = 0;
+			r->filename = process_token(r->filename, env, &quote_found);
+
+			if (r->type == TOKEN_HEREDOC)
+				r->heredoc_quoted = quote_found;
+			r = r->next;
+		}
+		cmd = cmd->next;
+	}
 }
 
 static char	*readline_heredocs(void)
@@ -1052,11 +1069,8 @@ int	run_heredocs(char *delimiter, int quoted, t_env *env)
 			return (-1);
 		if (!line)
 			break;
-		if (ft_strcmp(line, delimiter) == 0)
-		{
-			free(line);break;
+		if (ft_strcmp(line, delimiter) == 0 && (free(line), 1))
 			break;
-		}
 		if (!quoted)
 			line = expand_heredoc_line(line, env);
 		write_to_stdout(fd, line);
@@ -1067,9 +1081,11 @@ int	run_heredocs(char *delimiter, int quoted, t_env *env)
 	return (fd[0]);
 }
 
-void handle_heredocs(t_cmd *cmd_list, t_env *env)
+void	handle_heredocs(t_cmd *cmd_list, t_env *env)
 {
-    t_cmd *cmd = cmd_list;
+    t_cmd *cmd;
+    
+    cmd = cmd_list;
     while (cmd)
     {
         t_redir *r = cmd->redirections;
@@ -1087,9 +1103,11 @@ void handle_heredocs(t_cmd *cmd_list, t_env *env)
     }
 }
 
-void close_unused_heredoc_fds(t_cmd *cmd_list, t_cmd *current_cmd)
+void	close_unused_heredoc_fds(t_cmd *cmd_list, t_cmd *current_cmd)
 {
-    t_cmd *tmp = cmd_list;
+    t_cmd *tmp;
+   
+    tmp = cmd_list;
     while (tmp)
     {
         if (tmp != current_cmd)
@@ -1108,9 +1126,11 @@ void close_unused_heredoc_fds(t_cmd *cmd_list, t_cmd *current_cmd)
     }
 }
 
-void cleanup_heredocs(t_cmd *cmd_list)
+void	cleanup_heredocs(t_cmd *cmd_list)
 {
-    t_cmd *cmd = cmd_list;
+    t_cmd	*cmd;
+   
+    cmd = cmd_list;
     while (cmd)
     {
         t_redir *r = cmd->redirections;
@@ -1127,7 +1147,7 @@ void cleanup_heredocs(t_cmd *cmd_list)
     }
 }
 
-void ft_pwd(void)
+void	ft_pwd(void)
 {
     char cwd[1024];
     if (getcwd(cwd, sizeof(cwd)))
@@ -1136,7 +1156,7 @@ void ft_pwd(void)
         perror("pwd");
 }
 
-void update_pwd(t_env *env, char *pwd)
+void	update_pwd(t_env *env, char *pwd)
 {
     char cwd[1024];
     getcwd(cwd, sizeof(cwd));
@@ -1288,10 +1308,12 @@ int	ft_echo(t_cmd *cmd)
 }
 
 /* EXPORT FUNCTIONS START HERE */
-static void	print_env_list(t_env **env_head) 
+static void	print_env_list(t_env **env_head, t_cmd *cmd)
 {
-	t_env *tmp;
+	t_env	*tmp;
        
+	if (cmd->argv[1])
+		return ;
 	tmp = *env_head;
        	while (tmp)
        	{
@@ -1385,16 +1407,14 @@ int	ft_export(t_cmd *cmd, t_env **env_head)
 	int	i;
 
 	i = 1;
-	if (!cmd->argv[1])
-	       	print_env_list(env_head);
+	print_env_list(env_head, cmd);
 	while (cmd->argv[i])
 	{ 
 	       	if (!check_first_char(cmd->argv[i][0]))
 		       	return (1); 
 		eq_pos = strchr(cmd->argv[i], '=');
-		if (!eq_pos) 
-			if (!export_key_as_var(ft_strdup(cmd->argv[i]), env_head))
-				return (1);
+		if (!eq_pos && !export_key_as_var(ft_strdup(cmd->argv[i]), env_head))
+		       return (1);	
 		if (eq_pos) 
 		{
 			key = ft_substr(cmd->argv[i], 0, eq_pos - cmd->argv[i]);
@@ -1535,10 +1555,9 @@ static void	close_pipes(int pipe_fd[2])
 	close(pipe_fd[1]);
 }
 
-static void	spawn_child(pid_t last_pid, t_cmd *cmd_list, int pipe_fd[2], int prev_fd)
+static void	setup_childs_fds(pid_t last_pid, t_cmd *cmd_list, int pipe_fd[2], int prev_fd)
 {
-//	pid_t	last_pid;
-	t_cmd *cmd;
+	t_cmd	*cmd;
        
 	cmd = cmd_list;
 	signal(SIGINT, SIG_DFL);
@@ -1615,6 +1634,7 @@ static void	execute_child(t_cmd *cmd, t_env *env)
 	perror(cmd->argv[0]);
 	clean_on_exit(cmd, env);
 	free(path);
+	free_split(env_arr);
 	exit(127);
 }
 
@@ -1630,11 +1650,10 @@ static void	wait_for_child(pid_t last_pid)
             if (WIFEXITED(status))
                 g_exit_status = WEXITSTATUS(status);
         }
-	if (WTERMSIG(status))
+	if (WIFSIGNALED(status))
 	{
 		g_exit_status = WTERMSIG(status) + 128;
-		// check if allowed function else Remi to rewrite 
-        if (WCOREDUMP(status))
+		if (WCOREDUMP(status))
 			write(2, "Quit (core dumped)\n",19);
 	}
     }
@@ -1681,7 +1700,7 @@ static void	apply_redirection(t_cmd *cmd, t_env *env)
 
 static void	process_child(t_cmd *cmd, t_env *env)
 {
-	int ret;
+	int	ret;
 
 	apply_redirection(cmd, env);
 	check_first_cmd(cmd, env);
@@ -1703,7 +1722,7 @@ static void	cleanup_parent(t_cmd **cmd, int pipe_fd[2], int *prev_fd)
 	*cmd = (*cmd)->next;
 }
 
-static void	process_cmd(t_cmd *cmd_list, t_env *env, int prev_fd)
+static pid_t	process_cmd(t_cmd *cmd_list, t_env *env, int prev_fd)
 {
 	t_cmd	*cmd;
 	int	pipe_fd[2];
@@ -1711,17 +1730,16 @@ static void	process_cmd(t_cmd *cmd_list, t_env *env, int prev_fd)
 
 	cmd = cmd_list;
 	last_pid = 0;
-	int c = 0;
-	while (cmd || c >= 10)
+	while (cmd)
 	{
 		if (cmd->next)
 			pipe(pipe_fd);
 		last_pid = fork();
 		if (on_fork_error(last_pid) == 0)
-			return ;
+			return (0) ;
 		if (last_pid == 0)
 		{
-			spawn_child(last_pid, cmd_list, pipe_fd, prev_fd);
+			setup_childs_fds(last_pid, cmd_list, pipe_fd, prev_fd);
 			if (cmd->next)
 				close_pipes(pipe_fd);
 			process_child(cmd, env);
@@ -1729,24 +1747,23 @@ static void	process_cmd(t_cmd *cmd_list, t_env *env, int prev_fd)
 		else
 			cleanup_parent(&cmd, pipe_fd, &prev_fd);
 	}
+	return (last_pid);
 }
 
-void executor(t_cmd *cmd_list, t_env *env)
+void	executor(t_cmd *cmd_list, t_env *env)
 {
-    int	prev_fd;
-    t_cmd	*cmd;
-    pid_t	last_pid;
+	int		prev_fd;
+	t_cmd	*cmd;
+	pid_t	last_pid;
 
-    prev_fd = -1;
-    cmd = cmd_list;
-    last_pid = 0;
-    execute_parent_builtin(cmd_list, env);
-    process_cmd(cmd_list, env, prev_fd);
-    if (prev_fd != -1) 
-	    close(prev_fd); 
-    wait_for_child(last_pid);
+	prev_fd = -1;
+	cmd = cmd_list;
+	execute_parent_builtin(cmd_list, env);
+	last_pid = process_cmd(cmd_list, env, prev_fd);
+	if (prev_fd != -1)
+		close(prev_fd);
+	wait_for_child(last_pid);
 }
-
 /* EXECUTOR BLOCK ENDS HERE */
 
 /* MAIN BLOCK STARTS */
@@ -1777,22 +1794,12 @@ char	*get_input(t_env *env)
 		add_history(input);
 	return (input);
 }
-/*
-t_token	*make_token_list(t_env *env, char *input)
-{
-	t_token	*token_list;
 
-	token_list = lexer(input); 
-	if (!token_list)
-		return (NULL);
-	return (token_list);
-}
-*/
 t_cmd	*make_cmds(char *input)
 {
 	t_token	*token_list;
 	t_cmd	*cmds;
-       
+
 	token_list = lexer(input);
 	if (!token_list)
 		return (NULL);
