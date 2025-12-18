@@ -157,6 +157,7 @@ int	init_signal(int signal, void(*f)(int s))
 	return (0);
 }
 void	handle_sigint_heredoc(int sig);
+
 void	set_heredoc_signals(void)
 {
 	struct sigaction	sa;
@@ -329,7 +330,7 @@ int	ft_isdigit(int c)
 {
 	if (c >= '0' && c <= '9')
 		return (1);
-    return (0);
+	return (0);
 }
 /* END OF LIBFT BLOCK */
 
@@ -344,7 +345,7 @@ t_env	*new_env_node(char *key, char *value)
 	return (node);
 }
 
-void	free_env_list(t_env *env) 
+void	free_env_list(t_env *env)
 {
 	t_env	*tmp;
 	while (env)
@@ -377,31 +378,46 @@ void    increment_shelvl(t_env **envp)
 	}
 }
 
-t_env	*init_environment(char **envp)
+char	*check_envp(char **envp)
 {
-	int	i;
-	char	*key;
-	char	*value;
-	char	*eq_pos;
-	t_env	*head;
-	t_env	*tail;
-
-	head = NULL;
-	tail = NULL;
-	i = 0;
 	if (!envp)
 	{
 		printf("empty env list\n");
 		return (NULL);
 	}
+}
+
+static	t_env	*env_node_from_str(char *env_line)
+{
+	char	*eq_pos;
+	char	*key;
+	char	*value;
+
+	eq_pos = ft_strchr(env_line, '=');
+	if (!eq_pos)
+		return (NULL);
+	key = ft_substr(env_line, 0, eq_pos - env_line);
+	value = ft_strdup(eq_pos + 1);
+	return (new_env_node(key, value));
+}
+
+t_env	*init_environment(char **envp)
+{
+	int	i;
+	t_env	*head;
+	t_env	*tail;
+	t_env	*new_node;
+
+	if (!check_envp(envp))
+		return (NULL);
+	head = NULL;
+	tail = NULL;
+	i = 0;
 	while (envp[i])
 	{
-		eq_pos = strchr(envp[i], '=');
-		if (eq_pos)
+		new_node = env_node_from_str(envp[i]);
+		if (new_node)
 		{
-			key = ft_substr(envp[i], 0, eq_pos - envp[i]);
-			value = ft_strdup(eq_pos + 1);
-			t_env *new_node = new_env_node(key, value);
 			if (!head)
 			{
 				head = new_node;
@@ -458,7 +474,7 @@ char	**env_list_to_tab(t_env *env)
 	return (tab);
 }
 
-t_env	*populate_empty_envlist()
+t_env	*populate_empty_envlist(void)
 {
 	char	cwd[1024];
 	char	*key;
@@ -498,7 +514,7 @@ int	update_env(t_env *env, char *key, char *new_value)
 
 t_token	*new_token(char *value, t_tokentype type)
 {
-	t_token *token;
+	t_token	*token;
 
 	token = malloc(sizeof(t_token));
 	token->value = value;
@@ -534,7 +550,7 @@ static int	lex_redirpipe(char *input, int i, t_token **head)
 		if (input[i + 1] == '>')
 		{
 			add_token_back(head, new_token(ft_strdup(">>"),
-						TOKEN_REDIR_APPEND));
+					TOKEN_REDIR_APPEND));
 			return (i + 2);
 		}
 		add_token_back(head, new_token(ft_strdup(">"), TOKEN_REDIR_OUT));
@@ -568,7 +584,8 @@ static int	lex_word(char *input, int i, t_token **head)
 		else
 			i++;
 	}
-	add_token_back(head, new_token(ft_substr(input, start, i - start), TOKEN_WORD));
+	add_token_back
+		(head, new_token(ft_substr(input, start, i - start), TOKEN_WORD));
 	return (i);
 }
 
@@ -819,11 +836,11 @@ char	*get_env_val_wrapper(char *key, t_env *env)
 	return (v);
 }
 
-static void append_str(char **res, const char *suffix);
-static void append_char(char **res, char c);
-static char *extract_key(char *str, int *i);
-static void append_env_value(char **res, char *key, t_env *env);
-static int handle_dollar(char *str, int *i, char **res, t_env *env);
+static void	append_str(char **res, const char *suffix);
+static void	append_char(char **res, char c);
+static char	*extract_key(char *str, int *i);
+static void	append_env_value(char **res, char *key, t_env *env);
+static int	handle_dollar(char *str, int *i, char **res, t_env *env);
 
 char	*expand_heredoc_line(char *str, t_env *env)
 {
@@ -906,7 +923,7 @@ static int	handle_expand_dollar(char *s, int *i, char **res, t_env *env)
 char	*expand_str(char *s, t_env *env)
 {
 	char	*res;
-	int	i;
+	int		i;
 
 	res = ft_strdup("");
 	i = 0;
@@ -914,8 +931,8 @@ char	*expand_str(char *s, t_env *env)
 	{
 		if (s[i] == '\'')
 			append_literal_segment(s, &i, &res);
-		else if (s[i] == '$' &&
-			handle_expand_dollar(s, &i, &res, env))
+		else if (s[i] == '$'
+			&& handle_expand_dollar(s, &i, &res, env))
 			continue ;
 		else
 			append_plain_char(&res, s[i++]);
@@ -1152,8 +1169,8 @@ void	handle_heredocs(t_cmd *cmd_list, t_env *env)
 		{
 			if (r->type == TOKEN_HEREDOC)
 			{
-				r->heredoc_fd =
-				run_heredocs(r->filename, r->heredoc_quoted, env);
+				r->heredoc_fd = run_heredocs
+					(r->filename, r->heredoc_quoted, env);
 				if (r->heredoc_fd == -1)
 					return ;
 			}
@@ -1266,7 +1283,7 @@ static char	*cd_oldpwd(t_env *env)
 	return (oldpwd);
 }
 
-int ft_cd(t_cmd *cmd, t_env *env)
+int	ft_cd(t_cmd *cmd, t_env *env)
 {
 	char	*target_path;
 
@@ -1317,7 +1334,7 @@ void	ft_exit(t_cmd *cmd, t_env *env)
 	if (!is_number(cmd->argv[1]))
 	{
 		printf("minishell: exit: %s: numeric argument required\n",
-		cmd->argv[1]);
+			cmd->argv[1]);
 		clean_on_exit(cmd, env);
 		exit (2);
 	}
@@ -1390,7 +1407,7 @@ static void	print_env_list(t_env **env_head, t_cmd *cmd)
 	}
 }
 
-static int	check_first_char (char c)
+static int	check_first_char(char c)
 {
 	if ((c >= 'a' && c <= 'z')
 		|| (c >= 'A' && c <= 'Z') || (c == '_'))
@@ -1510,7 +1527,7 @@ void	delete_node(char *argv, t_env **env_head)
 		{
 			if (prev)
 				prev->next = curr->next;
-			else 
+			else
 				*env_head = curr->next;
 			free(curr->key);
 			free(curr->value);
@@ -1711,7 +1728,6 @@ static void	wait_for_child(pid_t last_pid)
 	pid_t		wpid;
 	int		status;
 
-//	while ((wpid = wait(&status)) > 0)
 	wpid = wait(&status);
 	while (wpid > 0)
 	{
