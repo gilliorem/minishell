@@ -192,89 +192,6 @@ void	handle_sigint_heredoc(int sig)
 	write(1, "\n", 1);
 }
 
-// --- LIBFT-LIKE FUNCTIONS --- //
-/*
-size_t ft_strlen(const char *s) 
-{ 
-    size_t c=0; 
-    while (s[c]) c++; 
-    return c; 
-}
-
-char *ft_strdup(const char *s1) 
-{ 
-    char *dst = malloc(strlen(s1) + 1); 
-    if (!dst) 
-        return NULL; 
-    strcpy(dst, s1); 
-    return dst; 
-}
-
-char *ft_substr(char const *s, unsigned int start, size_t len) 
-{
-    if (!s) return NULL; 
-    if (start >= strlen(s)) 
-        return ft_strdup("");
-    if (len > strlen(s + start)) 
-        len = strlen(s + start);
-    char *sub = malloc(sizeof(char) * (len + 1)); 
-    if (!sub) return NULL;
-    strncpy(sub, s + start, len); sub[len] = '\0'; return sub;
-}
-
-char *ft_strjoin(const char *s1, const char *s2) {
-    if (!s1 || !s2) return NULL;
-    char *ptr = malloc(ft_strlen(s1) + ft_strlen(s2) + 1);
-    if (!ptr) return NULL;
-    strcpy(ptr, s1); strcat(ptr, s2); return ptr;
-}
-
-static int word_countandreplace(char *s, char delimiter) {
-    bool new_word=false; char *temp=s; int count=0;
-    while (*temp) { 
-        if (*temp!=delimiter && !new_word) { new_word=true; count++; } 
-        else if (*temp==delimiter) { *temp='\0'; new_word=false; } 
-        temp++; 
-    }
-    return count;
-}
-
-static bool fill_ptr(char **ptr, char *s1, int wc) {
-    int i=0; 
-    while (i<wc) { 
-        if (*s1) { 
-            ptr[i++]=ft_strdup(s1); 
-            if (!ptr[i-1]) return false; 
-            while (*s1) s1++; 
-        } 
-        s1++; 
-    } 
-    ptr[i]=NULL; 
-    return true;
-}
-
-char **ft_split(char const *s, char c) {
-    if (!s) return NULL; 
-    char *s1=ft_strdup(s); 
-    if (!s1) return NULL;
-    int wc=word_countandreplace(s1, c); 
-    char **ptr=malloc(sizeof(char*)*(wc+1));
-    if (!ptr || !fill_ptr(ptr, s1, wc)) { free(s1); return NULL; } 
-    free(s1); 
-    return ptr;
-}
-char *ft_itoa(int n) {
-    int len = get_len(n);
-    char *str = malloc(len + 1);
-    if (!str) return NULL;
-    str[len] = '\0';
-    if (n == 0) str[0] = '0';
-    if (n < 0) { str[0] = '-'; n = -n; } 
-    while (n) { str[--len] = (n % 10) + '0'; n /= 10; }
-    return str;
-}
-*/
-
 void	free_split(char **arr)
 {
 	int	i;
@@ -348,6 +265,7 @@ t_env	*new_env_node(char *key, char *value)
 void	free_env_list(t_env *env)
 {
 	t_env	*tmp;
+
 	while (env)
 	{
 		tmp = env->next;
@@ -358,19 +276,18 @@ void	free_env_list(t_env *env)
 	}
 }
 
-void    increment_shelvl(t_env **envp)
+void	increment_shelvl(t_env **envp)
 {
 	int	shlvl;
-
-	shlvl = 0;
-	t_env *node;
+	t_env	*node;
 
 	node = *envp;
+	shlvl = 0;
 	while (node->next != NULL)
 	{
-		if (strcmp(node->key, "SHLVL") == 0)
+		if (ft_strcmp(node->key, "SHLVL") == 0)
 		{
-			shlvl = atoi(node->value) + 1;
+			shlvl = ft_atoi(node->value) + 1;
 			free(node->value);
 			node->value = ft_itoa(shlvl);
 		}
@@ -378,13 +295,14 @@ void    increment_shelvl(t_env **envp)
 	}
 }
 
-char	*check_envp(char **envp)
+int	check_envp(char **envp)
 {
 	if (!envp)
 	{
 		printf("empty env list\n");
-		return (NULL);
+		return (0);
 	}
+	return (1);
 }
 
 static	t_env	*env_node_from_str(char *env_line)
@@ -399,6 +317,20 @@ static	t_env	*env_node_from_str(char *env_line)
 	key = ft_substr(env_line, 0, eq_pos - env_line);
 	value = ft_strdup(eq_pos + 1);
 	return (new_env_node(key, value));
+}
+
+static void	env_add_back(t_env **head, t_env **tail, t_env *new_node)
+{
+	if (!*head)
+	{
+		*head = new_node;
+		*tail = new_node;
+	}
+	else
+	{
+		(*tail)->next = new_node;
+		*tail = new_node;
+	}
 }
 
 t_env	*init_environment(char **envp)
@@ -417,18 +349,7 @@ t_env	*init_environment(char **envp)
 	{
 		new_node = env_node_from_str(envp[i]);
 		if (new_node)
-		{
-			if (!head)
-			{
-				head = new_node;
-				tail = head;
-			}
-			else
-			{
-				tail->next = new_node;
-				tail = new_node;
-			}
-		}
+			env_add_back(&head, &tail, new_node);
 		i++;
 	}
 	return (head);
@@ -438,7 +359,7 @@ char	*get_env_val(t_env *env, char *key)
 {
 	while (env)
 	{
-		if (strcmp(env->key, key) == 0)
+		if (ft_strcmp(env->key, key) == 0)
 			return (ft_strdup(env->value));
 		env = env->next;
 	}
@@ -491,7 +412,7 @@ void	ft_env(t_env *env)
 {
 	while (env)
 	{
-		if (strcmp(env->value, "") != 0)
+		if (ft_strcmp(env->value, "") != 0)
 			printf("%s=%s\n", env->key, env->value);
 		env = env->next;
 	}
@@ -501,7 +422,7 @@ int	update_env(t_env *env, char *key, char *new_value)
 {
 	while (env)
 	{
-		if (strcmp(env->key, key) == 0)
+		if (ft_strcmp(env->key, key) == 0)
 		{
 			free(env->value);
 			env->value = ft_strdup(new_value);
@@ -571,7 +492,7 @@ static int	lex_word(char *input, int i, t_token **head)
 	char	q;
 
 	start = i;
-	while (input[i] && !isspace(input[i]) && !strchr("|<>", input[i]))
+	while (input[i] && !ft_isspace(input[i]) && !ft_strchr("|<>", input[i]))
 	{
 		if (input[i] == '\'' || input[i] == '"')
 		{
@@ -603,7 +524,7 @@ t_token	*lexer(char *input)
 			i++;
 			continue ;
 		}
-		if (strchr("|<>", input[i]))
+		if (ft_strchr("|<>", input[i]))
 		{
 			i = lex_redirpipe(input, i, &head);
 			continue ;
@@ -884,7 +805,7 @@ static char	*extract_expand_key(char *s, int *i)
 		return (ft_strdup("?"));
 	}
 	start = *i;
-	while (s[*i] && (isalnum(s[*i]) || s[*i] == '_'))
+	while (s[*i] && (ft_isalnum(s[*i]) || s[*i] == '_'))
 		(*i)++;
 	return (ft_substr(s, start, *i - start));
 }
@@ -905,11 +826,11 @@ static int	handle_expand_dollar(char *s, int *i, char **res, t_env *env)
 
 	if (s[*i] != '$')
 		return (0);
-	if (!(s[*i + 1] == '?' || isalpha(s[*i + 1]) || s[*i + 1] == '_'))
+	if (!(s[*i + 1] == '?' || ft_isalpha(s[*i + 1]) || s[*i + 1] == '_'))
 		return (0);
 	(*i)++;
 	key = extract_expand_key(s, i);
-	if (strcmp(key, "?") == 0)
+	if (ft_strcmp(key, "?") == 0)
 		val = ft_itoa(g_exit_status);
 	else
 		val = get_env_val_wrapper(key, env);
@@ -941,6 +862,7 @@ char	*expand_str(char *s, t_env *env)
 	return (res);
 }
 
+
 static void	append_str(char **res, const char *suffix)
 {
 	char	*tmp;
@@ -969,7 +891,7 @@ static char	*extract_key(char *str, int *i)
 		return (ft_strdup("?"));
 	}
 	start = *i;
-	while (str[*i] && (isalnum(str[*i]) || str[*i] == '_'))
+	while (str[*i] && (ft_isalnum(str[*i]) || str[*i] == '_'))
 		(*i)++;
 	return (ft_substr(str, start, *i - start));
 }
@@ -978,7 +900,7 @@ static void	append_env_value(char **res, char *key, t_env *env)
 {
 	char	*val;
 
-	if (strcmp(key, "?") == 0)
+	if (ft_strcmp(key, "?") == 0)
 		val = ft_itoa(g_exit_status);
 	else
 		val = get_env_val_wrapper(key, env);
@@ -992,8 +914,8 @@ static int	handle_dollar(char *str, int *i, char **res, t_env *env)
 
 	if (str[*i] != '$')
 		return (0);
-	if (!(str[*i + 1] == '?' || isalpha(str[*i + 1])
-	|| str[*i + 1] == '_'))
+	if (!(str[*i + 1] == '?' || ft_isalpha(str[*i + 1])
+		|| str[*i + 1] == '_'))
 	{
 		append_char(res, str[(*i)++]);
 		return (1);
@@ -1226,6 +1148,17 @@ void	cleanup_heredocs(t_cmd *cmd_list)
 	}
 }
 
+void	clean_on_exit(t_cmd *cmds, t_env *env_list)
+{
+	if (cmds)
+	{
+		cleanup_heredocs(cmds);
+		free_cmd_list(cmds);
+	}
+	if (env_list)
+		free_env_list(env_list);
+}
+
 void	ft_pwd(void)
 {
 	char	cwd[1024];
@@ -1289,7 +1222,7 @@ int	ft_cd(t_cmd *cmd, t_env *env)
 
 	if (!cd_argument(cmd))
 		return (1);
-	if (!cmd->argv[1] || strcmp(cmd->argv[1], "~") == 0)
+	if (!cmd->argv[1] || ft_strcmp(cmd->argv[1], "~") == 0)
 		target_path = cd_home(cmd, env);
 	else if (ft_strcmp(cmd->argv[1], "-") == 0)
 		target_path = cd_oldpwd(env);
@@ -1310,16 +1243,6 @@ int	ft_cd(t_cmd *cmd, t_env *env)
 }
 /* FT_CD ENDING HERE */
 
-void	clean_on_exit(t_cmd *cmds, t_env *env_list)
-{
-	if (cmds)
-	{
-		cleanup_heredocs(cmds);
-		free_cmd_list(cmds);
-	}
-	if (env_list)
-		free_env_list(env_list);
-}
 
 void	ft_exit(t_cmd *cmd, t_env *env)
 {
@@ -1343,7 +1266,7 @@ void	ft_exit(t_cmd *cmd, t_env *env)
 		printf("minishell: exit: too many arugments\n");
 		return ;
 	}
-	exit_code = atoi(cmd->argv[1]);
+	exit_code = ft_atoi(cmd->argv[1]);
 	clean_on_exit(cmd, env);
 	exit (exit_code % 256);
 }
@@ -1363,7 +1286,7 @@ static int	is_new_line(char *arg)
 	return (1);
 }
 
-int	ft_echo(t_cmd *cmd)
+int	ft_echo(t_cmd *cmd, t_env *env)
 {
 	bool	newline;
 	int	i;
@@ -1386,6 +1309,7 @@ int	ft_echo(t_cmd *cmd)
 	}
 	if (newline)
 		ft_putchar_fd('\n', 1);
+	clean_on_exit(cmd, env);
 	return (0);
 }
 
@@ -1496,7 +1420,7 @@ int	ft_export(t_cmd *cmd, t_env **env_head)
 	{
 		if (!check_first_char(cmd->argv[i][0]))
 			return (1);
-		eq_pos = strchr(cmd->argv[i], '=');
+		eq_pos = ft_strchr(cmd->argv[i], '=');
 		if (!eq_pos && !export_key_as_var(ft_strdup(cmd->argv[i]), env_head))
 			return (1);
 		if (eq_pos)
@@ -1523,7 +1447,7 @@ void	delete_node(char *argv, t_env **env_head)
 	prev = NULL;
 	while (curr)
 	{
-		if (strcmp(curr->key, argv) == 0)
+		if (ft_strcmp(curr->key, argv) == 0)
 		{
 			if (prev)
 				prev->next = curr->next;
@@ -1573,8 +1497,13 @@ static char	**get_directories(t_env *env)
 
 	path_env = get_env_val(env, "PATH");
 	if (!path_env)
+	{
+		//printf("NO PATH ENV\n");
 		return (NULL);
+	}
 	directories = ft_split(path_env, ':');
+	//printf("freeing path env\n");
+	//free(path_env);
 	return (directories);
 }
 
@@ -1605,21 +1534,6 @@ static char	*get_command_path(char *cmd, t_env *env)
 	}
 	free_split(directories);
 	return (NULL);
-}
-
-static void	execute_parent_builtin(t_cmd *cmd, t_env *env)
-{
-	if (cmd && !cmd->next && cmd->argv && cmd->argv[0])
-	{
-		if (ft_strcmp(cmd->argv[0], "exit") == 0)
-			ft_exit(cmd, env);
-		else if (ft_strcmp(cmd->argv[0], "export") == 0 && cmd->argv[1])
-			g_exit_status = ft_export(cmd, &env);
-		else if (ft_strcmp(cmd->argv[0], "unset") == 0)
-			g_exit_status = ft_unset(cmd, &env);
-		else if (ft_strcmp(cmd->argv[0], "cd") == 0)
-			g_exit_status = ft_cd(cmd, env);
-	}
 }
 
 static int	on_fork_error(pid_t last_pid)
@@ -1666,9 +1580,24 @@ static void	check_first_cmd(t_cmd *cmd, t_env *env)
 
 static void	on_neg_ret(int ret, t_cmd *cmd, t_env *env)
 {
-	g_exit_status = ret;
-	clean_on_exit(cmd, env);
-	exit(g_exit_status);
+	//g_exit_status = ret;
+	//clean_on_exit(cmd, env);
+	//exit(g_exit_status);
+}
+
+static void	execute_parent_builtin(t_cmd *cmd, t_env *env)
+{
+	if (cmd && !cmd->next && cmd->argv && cmd->argv[0])
+	{
+		if (ft_strcmp(cmd->argv[0], "exit") == 0)
+			ft_exit(cmd, env);
+		else if (ft_strcmp(cmd->argv[0], "export") == 0 && cmd->argv[1])
+			g_exit_status = ft_export(cmd, &env);
+		else if (ft_strcmp(cmd->argv[0], "unset") == 0)
+			g_exit_status = ft_unset(cmd, &env);
+		else if (ft_strcmp(cmd->argv[0], "cd") == 0)
+			g_exit_status = ft_cd(cmd, env);
+	}
 }
 
 static int	execute_children_builtin(t_cmd *cmd, t_env *env)
@@ -1676,31 +1605,33 @@ static int	execute_children_builtin(t_cmd *cmd, t_env *env)
 	int	ret;
 
 	ret = -1;
-	if (strcmp(cmd->argv[0], "env") == 0)
+	if (ft_strcmp(cmd->argv[0], "env") == 0)
 	{
 		ret = 0;
 		ft_env(env);
 	}
-	else if (strcmp(cmd->argv[0], "pwd") == 0)
+	else if (ft_strcmp(cmd->argv[0], "pwd") == 0)
 	{
 		ret = 0;
 		ft_pwd();
 	}
-	else if (strcmp(cmd->argv[0], "echo") == 0)
-		ret = ft_echo(cmd);
-	else if (strcmp(cmd->argv[0], "cd") == 0)
-		ret = ft_cd(cmd, env);
-	else if (strcmp(cmd->argv[0], "export") == 0)
+	else if (ft_strcmp(cmd->argv[0], "echo") == 0)
+		ret = ft_echo(cmd, env);
+	else if (ft_strcmp(cmd->argv[0], "export") == 0)
 		ret = ft_export(cmd, &env);
-	else if (strcmp(cmd->argv[0], "unset") == 0)
+	else if (ft_strcmp(cmd->argv[0], "unset") == 0)
 		ret = ft_unset(cmd, &env);
+	else if (ft_strcmp(cmd->argv[0], "exit") == 0)
+		exit(g_exit_status);
+	else if (ft_strcmp(cmd->argv[0], "cd") == 0)
+		exit(1);
 	return (ret);
 }
 
 static void	exit_on_command_not_found(t_cmd *cmd, t_env *env)
 {
 	write(2, "minishell: command not found: ", 30);
-	write(2, cmd->argv[0], strlen(cmd->argv[0]));
+	write(2, cmd->argv[0], ft_strlen(cmd->argv[0]));
 	write(2, "\n", 1);
 	clean_on_exit(cmd, env);
 	exit(127);
@@ -1713,7 +1644,11 @@ static void	execute_child(t_cmd *cmd, t_env *env)
 
 	path = get_command_path(cmd->argv[0], env);
 	if (!path)
+	{
+		//free(cmd->argv[0]);
+		printf("NO PATH\n");
 		exit_on_command_not_found(cmd, env);
+	}
 	env_arr = env_list_to_tab(env);
 	execve(path, cmd->argv, env_arr);
 	perror(cmd->argv[0]);
@@ -1793,7 +1728,8 @@ static void	process_child(t_cmd *cmd, t_env *env)
 	check_first_cmd(cmd, env);
 	ret = execute_children_builtin(cmd, env);
 	if (ret != -1)
-		on_neg_ret(ret, cmd, env);
+		exit(ret);
+		//on_neg_ret(ret, cmd, env);
 	execute_child(cmd, env);
 }
 
@@ -1837,6 +1773,18 @@ static pid_t	process_cmd(t_cmd *cmd_list, t_env *env, int prev_fd)
 	return (last_pid);
 }
 
+int	is_parent_builtin(t_cmd *cmd)
+{
+	if (!cmd || !cmd->argv || !cmd->argv[0])
+		return (0);
+	if ((ft_strcmp(cmd->argv[0], "exit") == 0)
+	|| (ft_strcmp(cmd->argv[0], "cd") == 0)
+	|| (ft_strcmp(cmd->argv[0], "export") == 0)
+	|| (ft_strcmp(cmd->argv[0], "unset") == 0))
+		return (1);
+	return (0);	
+}
+
 void	executor(t_cmd *cmd_list, t_env *env)
 {
 	int		prev_fd;
@@ -1845,7 +1793,11 @@ void	executor(t_cmd *cmd_list, t_env *env)
 
 	prev_fd = -1;
 	cmd = cmd_list;
-	execute_parent_builtin(cmd_list, env);
+	if (cmd_list && !cmd_list->next && is_parent_builtin(cmd_list))
+	{
+		execute_parent_builtin(cmd_list, env);
+		return ;
+	}
 	last_pid = process_cmd(cmd_list, env, prev_fd);
 	if (prev_fd != -1)
 		close(prev_fd);

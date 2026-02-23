@@ -1,3 +1,5 @@
+/* env -i ./a.out 
+ * need to be able to export a variable, right now, the variable does not add to the list */
 /* MEMORY ISSUES */
 /* In case of cmd error such as: `cd | ls` quotes, parser, new_cmd, init_environment  */
 
@@ -1167,7 +1169,8 @@ int main(int argc, char **argv, char **envp)
     (void)argc; (void)argv;
     printf("--- The best Minishell is in the works ---\n");
     t_env *env_list = init_environment(envp);
-    increment_shelvl(&env_list);
+    if (env_list)
+	     increment_shelvl(&env_list);
     char *input;
 
     signal(SIGINT, handle_sigint);  

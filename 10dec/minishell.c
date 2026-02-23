@@ -1,28 +1,11 @@
-/* Dec 4, testing (cgoh, cedric, brandon) */
 /*
- * export test!=abc [X]
-  bash: export: `test!=abc': not a valid identifier 
-  export key value should not take any special char
- 
- * exit 9223372036854775808 (more than long long int)  [X]
- bash: exit: 9223372036854775808: numeric argument required
- can use string compare: if the string value is more than long long int limit, print the error.
-
- * exit with no arguments does not overwrite the last exit status [X]
-  catch the exit status of ^C
-  >$ echo ^C
-  >$ exit
-  exit
-  >$ echo $?
-  130
-  --> prints the status of echo ^C, not the status of `exit` 
-
  * export spaces="           "
   and other cases where a $something combine with a cmd should still run the cmd
   should run the ls command (as white spaces are ignored) 
   >$ $spaces ls $spaces
   a.out minishell.c
 
+ * export | env [X]
   * export VAR_A=TEST_A 	: will populate the env list 
   * export VAR_B		: will *not* populate the env_list
   * export VAR_B=		: will populate the env_list
@@ -183,7 +166,9 @@ void handle_sigint(int sig)
 	rl_on_new_line();
 	rl_replace_line("", 0);
 	if (rl_readline_state & RL_STATE_READCMD)
+	{
 		rl_redisplay();
+	}
 } 
 
 int	init_signal(int signal, void(*f)(int s))
@@ -201,14 +186,12 @@ int	init_signal(int signal, void(*f)(int s))
 void handle_sigquit(int sig)
 {
 	(void) sig;
-
 	g_exit_status = 128 + sig;
 	if (init_signal(SIGQUIT, SIG_IGN))
 		return ;
 	kill(0, SIGQUIT);
 	printf("Quit (core dumped)\n");
 }
-
 
 
 size_t ft_strlen(const char *s) { size_t c=0; while (s[c]) c++; return c; }
@@ -235,9 +218,50 @@ t_env *new_env_node(char *key, char *value) { t_env *node = malloc(sizeof(t_env)
 
 void free_env_list(t_env *env) { t_env *tmp; while (env) { tmp = env->next; free(env->key); free(env->value); free(env); env = tmp; } }
 
-void	increment_shelvl(t_env **envp) { int shlvl = 0; t_env *node = *envp; while (node->next != NULL) { if (strcmp(node->key, "SHLVL") == 0) { shlvl = atoi(node->value) + 1; node->value = ft_itoa(shlvl); } node = node->next; } }
+void	increment_shelvl(t_env **envp) {
+	if (!envp)
+	{
+		printf("no env list\n");
+		return ;
+	}
+       	int shlvl = 0; t_env *node = *envp; while (node->next != NULL) 
+	{
+	       	if (strcmp(node->key, "SHLVL") == 0) 
+		{
+		       	shlvl = atoi(node->value) + 1; node->value = ft_itoa(shlvl); } node = node->next; } }
 
-t_env *init_environment(char **envp) { t_env *head = NULL; t_env *tail = NULL; int i = 0; while (envp[i]) { char *eq_pos = strchr(envp[i], '='); if (eq_pos) { char *key = ft_substr(envp[i], 0, eq_pos - envp[i]); char *value = ft_strdup(eq_pos + 1); t_env *new_node = new_env_node(key, value); if (!head) { head = new_node; tail = head; } else { tail->next = new_node; tail = new_node; } } i++; } return head; }
+t_env *init_environment(char **envp) 
+{
+       	t_env *head = NULL;
+       	t_env *tail = NULL;
+       	int i = 0;
+	if (!envp)
+	{
+		printf("empty env list\n");
+		return NULL;
+	}
+       	while (envp[i]) {
+	       	char *eq_pos = strchr(envp[i], '=');
+	       	if (eq_pos) 
+		{
+		       	char *key = ft_substr(envp[i], 0, eq_pos - envp[i]);
+		       	char *value = ft_strdup(eq_pos + 1);
+		       	t_env *new_node = new_env_node(key, value);
+		       	if (!head) 
+			{
+			       	head = new_node;
+			       	tail = head;
+		       	}
+		       	else 
+			{
+				tail->next = new_node;
+				tail = new_node;
+		       	}
+	       	}
+	       	i++;
+       	}
+       	return head;
+}
 // returns a copy of the env value when the key match.
 char *get_env_val(t_env *env, char *key) { while (env) { if (strcmp(env->key, key) == 0) return ft_strdup(env->value); env = env->next; } return NULL; }
  
@@ -512,35 +536,95 @@ t_cmd *parser(t_token *tok) {
 }
 
 
+// echo $
+// > $
+// echo $random
+// > 
+// echo $$
+// > 4096423 (process id of the current shell) 
+// echo $ $ $
+// > $ $ $
+
 char *get_env_val_wrapper(char *key, t_env *env) { char *v=get_env_val(env, key); return v ? v : ft_strdup(""); }
-char *expand_str(char *s, t_env *env) {
-	char *res=ft_strdup(""); int i=0;
-	while(s[i]) {
-		if(s[i]=='\'') { 
-			i++; int st=i; while(s[i]&&s[i]!='\'') i++; char *sub=ft_substr(s,st,i-st); char *t=ft_strjoin(res,sub); free(res); free(sub); res=t; if(s[i])i++; 
+
+
+char *expand_str(char *s, t_env *env) 
+{
+	char *res=ft_strdup("");
+       	int i=0;
+	while(s[i]) 
+	{
+		if(s[i]=='\'') 
+		{ 
+			i++;
+		       	int st=i;
+		       	while(s[i] && s[i] != '\'')
+			       	i++;
+		       	char *sub=ft_substr(s,st,i-st);
+		       	char *t=ft_strjoin(res,sub);
+		       	free(res);
+		       	free(sub);
+		       	res=t;
+		       	if(s[i])
+				i++; 
 		}
-		else if(s[i]=='$') { 
+		else if (s[i]=='$') 
+		{ 
+			int l = i;
+			if (s[l+1] == '\0')
+			{res = s; return res;}
+			else if (s[l+1] == '$')
+			{
+				int m = l + 1;
+				while (s[m])
+				{
+					if (s[l] == '$' && s[m] == '$')
+					{
+						pid_t shell_pid = getpid();
+						char *tmp_res = ft_itoa(shell_pid);
+						char *join_res = ft_strjoin(tmp_res, ft_itoa(shell_pid));
+
+					}
+					m++;
+				}
+				pid_t shell_pid = getpid();
+				res=ft_itoa(shell_pid);
+			       	return res;
+			}
 			i++;
 			int st=i;
-			if (s[i] == '?') {
+			if (s[i] == '?') 
+			{
 				i++;
-			} else {
+			} 
+			else 
+			{
 				while(isalnum(s[i])||s[i]=='_') i++; 
 			}
 			char *k=ft_substr(s,st,i-st); 
 			char *v;
 			if (k[0] == '?' && k[1] == '\0')
 				v = ft_itoa(g_exit_status);
-				//v = ft_itoa(env->exit_status);
 			else
 				v=get_env_val_wrapper(k,env); 
-			free(k); char *t=ft_strjoin(res,v); free(res); free(v); res=t; 
+			free(k);
+		       	char *t=ft_strjoin(res,v);
+		       	free(res);
+		       	free(v);
+		       	res=t; 
 		}
-		else { 
-			char c[2]={s[i++],0}; char *t=ft_strjoin(res,c); free(res); res=t; 
+		else 
+		{ 
+			char c[2]={s[i++],0};
+		       	char *t=ft_strjoin(res,c);
+		       	free(res);
+		       	res=t; 
 		}
-	} free(s); return res;
+	}
+       	free(s);
+       	return res;
 }
+
 void expander(t_cmd *cmd, t_env *env) 
 {
 	while(cmd) 
@@ -663,7 +747,7 @@ void executor(t_cmd *cmd_list, t_env *env)
 
 		if (last_pid == 0) { 
 			signal(SIGINT, SIG_DFL);
-			signal(SIGQUIT, handle_sigquit);
+			signal(SIGQUIT, SIG_DFL);
 			close_unused_heredoc_fds(cmd_list, cmd);
 			if (prev_fd != -1) { dup2(prev_fd, 0); close(prev_fd); }
 			if (cmd->next) { close(pipe_fd[0]); dup2(pipe_fd[1], 1); close(pipe_fd[1]); }
@@ -706,14 +790,11 @@ void executor(t_cmd *cmd_list, t_env *env)
 		}
 		else 
 		{
-//			sigaction(SIGINT, &advanced_handle_sigint, NULL);
-			//sigaction(SIGQUIT, &handle_sigquit, NULL);
 			if (prev_fd != -1) close(prev_fd);
 			if (cmd->next) { close(pipe_fd[1]); prev_fd = pipe_fd[0]; }
 			cmd = cmd->next;
 		}
 	}
-
 	int status;
 	pid_t wpid;
 	while ((wpid = wait(&status)) > 0)
@@ -727,6 +808,8 @@ void executor(t_cmd *cmd_list, t_env *env)
 			if (WTERMSIG(status))
 			{
 				g_exit_status = WTERMSIG(status) + 128;
+				if (WCOREDUMP(status))
+					write(2, "Quit (core dumped)\n",19);
 			}
 		}
 	}
@@ -755,14 +838,14 @@ int main(int argc, char **argv, char **envp)
 {
 	(void)argc; (void)argv;
 	t_env *env_list = init_environment(envp);
-	increment_shelvl(&env_list);
+	if (env_list)
+		increment_shelvl(&env_list);
 	char *input;
 
 	signal(SIGINT, handle_sigint);  
 	signal(SIGQUIT, SIG_IGN);       
 
 	while (1) {
-		//g_in_child = 0;
 		input = readline("MOGILLIO> ");
 		if (!input) { printf("exit\n"); break; }
 		if (!*input) { free(input); continue; }

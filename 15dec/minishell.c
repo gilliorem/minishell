@@ -597,10 +597,6 @@ t_cmd   *parser(t_token *tok)
     return (head);
 }
 
-
-
-
-
 char *get_env_val_wrapper(char *key, t_env *env) { char *v=get_env_val(env, key); return v ? v : ft_strdup(""); }
 
 char *expand_str(char *s, t_env *env) {
@@ -1027,6 +1023,9 @@ int	check_first_char (char c)
     if ((c >= 'a' && c <= 'z') 
 	|| (c >= 'A' && c <= 'Z') || (c == '_'))
 	    return (1);
+    ft_putstr_fd("minishell: export: not a valid identifier:", 2);
+    ft_putchar_fd(c, 2);
+    ft_putchar('\n');
     return (0);
 }
 
@@ -1095,93 +1094,124 @@ int	export_value(char *value, char *key, t_env **env_head)
 
 int	ft_export(t_cmd *cmd, t_env **env_head) 
 {
-	char	*arg;
 	char	*eq_pos;
 	char	*key;
 	char	*value;
-//	t_env	*new_node;
-//	t_env	*no_value_node;
-//	t_env	*tmp;
 	int	i;
 
 	i = 1;
 	if (!cmd->argv[1])
 	       	print_env_list(env_head);
-	for (i = 1; cmd->argv[i]; i++)
+	while (cmd->argv[i])
 	{ 
-		arg = cmd->argv[i];
-	       	if (check_first_char(arg[0]) == 0)
-		{
-		       	printf("minishell: export: '%s' not a valid identifier\n", arg);
+	       	if (!check_first_char(cmd->argv[i][0]))
 		       	return (1); 
-		}
-		eq_pos = strchr(arg, '=');
+		eq_pos = strchr(cmd->argv[i], '=');
 		if (!eq_pos) 
-			if (!export_key_as_var(ft_strdup(arg), env_head))
-				return (0);
+			if (!export_key_as_var(ft_strdup(cmd->argv[i]), env_head))
+				return (1);
 		if (eq_pos) 
 		{
-		       	key = ft_substr(arg, 0, eq_pos - arg);
+			key = ft_substr(cmd->argv[i], 0, eq_pos - cmd->argv[i]);
 			if (!check_key(key))
-			       	return (0);
+				return (1);
 			value = eq_pos + 1;
 			export_value(value, key, env_head);
-			/*
-			if (!update_env(*env_head, key, value))
-		       	{
-			       	new_node = new_env_node(key, ft_strdup(value));
-			       	if (!*env_head)
-				       	*env_head = new_node;
-			       	else 
-				{
-				       	tmp = *env_head;
-				       	while (tmp->next)
-					       	tmp = tmp->next;
-				       	tmp->next = new_node;
-			       	}
-		       	} 
-			else 
-				free(key);
-			*/
-	       	}
+		}
+		i++;
        	}
       	return (0);
 }
 
-int ft_unset(t_cmd *cmd, t_env **env_head) 
+void	delete_node(char *argv, t_env **env_head)
 {
-	if (!cmd->argv[1]) return (0);
-	for (int i = 1; cmd->argv[i]; i++) {
-		int j = 0; t_env *curr = *env_head; t_env *prev = NULL; while (curr) 
-		{ if (strcmp(curr->key, cmd->argv[i]) == 0) { if (prev) prev->next = curr->next; else *env_head = curr->next; free(curr->key); free(curr->value); free(curr); break; } prev = curr; curr = curr->next; }
-		j++; } return (0);
+	t_env	*curr;
+	t_env	*prev;
+
+	curr = *env_head;
+	prev = NULL;
+	while (curr)
+	{
+		if (strcmp(curr->key, argv) == 0) 
+		{
+			if (prev)
+				prev->next = curr->next;
+			else 
+				*env_head = curr->next;
+			free(curr->key);
+			free(curr->value);
+			free(curr);
+			break;
+		}
+		prev = curr;
+		curr = curr->next;
+	}
 }
 
-char *get_command_path(char *cmd, t_env *env) {
-    if (strchr(cmd, '/')) { 
-        if (access(cmd, X_OK) == 0) return ft_strdup(cmd); 
-        return NULL; 
-    }
-    char *path_env = get_env_val(env, "PATH"); 
-    if (!path_env) return NULL;
-    
-    char **directories = ft_split(path_env, ':'); 
-    free(path_env);
-    
-    char *full_path; char *temp; int i = 0;
-    while (directories && directories[i]) {
-        temp = ft_strjoin(directories[i], "/"); 
-        full_path = ft_strjoin(temp, cmd); 
-        free(temp);
-        if (access(full_path, X_OK) == 0) { 
-            free_split(directories); 
-            return full_path; 
-        }
-        free(full_path); 
-        i++;
-    }
-    free_split(directories); 
-    return NULL;
+int ft_unset(t_cmd *cmd, t_env **env_head) 
+{
+	int	i;
+
+	i = 1;
+	if (!cmd->argv[1])
+		return (0);
+	while (cmd->argv[i])
+	{
+		delete_node(cmd->argv[i], env_head);
+		i++;
+	}
+	return (0);
+}
+
+char*	absolute_cmd(char *cmd)
+{
+	if (ft_strchr(cmd, '/'))
+	{ 
+		if (access(cmd, X_OK) == 0)
+			return ft_strdup(cmd); 
+	}
+	return (NULL);
+}
+
+char	**get_directories(t_env *env)
+{
+	char	*path_env;
+	char	**directories;
+
+	path_env = get_env_val(env, "PATH"); 
+	if (!path_env)
+		return (NULL);
+	directories = ft_split(path_env, ':'); 
+	return (directories);
+}
+
+char	*get_command_path(char *cmd, t_env *env)
+{
+	char	*command_path;
+	char	**directories;
+	char	*temp;
+	int	i;
+
+	command_path = absolute_cmd(cmd);
+	if (command_path)
+		return (command_path);
+	directories = get_directories(env);
+	i = 0;
+	while (directories && directories[i])
+	{
+		temp = ft_strjoin(directories[i], "/");
+		command_path = ft_strjoin(temp, cmd);
+		free(temp);
+		if (access(command_path, X_OK) == 0)
+		{
+			free_split(directories);
+			return (command_path);
+		}
+		free(command_path);
+		i++;
+	}
+	free_split(directories);
+	return (NULL);
 }
 
 /* --- EXECUTOR --- */
@@ -1323,12 +1353,14 @@ int main(int argc, char **argv, char **envp)
         t_token *tok = lexer(input); 
         free(input);
         
-        if (!tok) continue;
+        if (!tok)
+	       	continue;
         
         t_cmd *cmds = parser(tok);
         free_tokens(tok);
         
-        if (!cmds) continue;
+        if (!cmds)
+		continue;
 
         expander(cmds, env_list);
         handle_heredocs(cmds); 

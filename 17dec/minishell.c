@@ -1295,25 +1295,16 @@ char	*get_command_path(char *cmd, t_env *env)
 
 void	execute_parent_builtin(t_cmd *cmd, t_env *env)
 {
-if (cmd && !cmd->next && cmd->argv && cmd->argv[0])
+	if (cmd && !cmd->next && cmd->argv && cmd->argv[0])
 	{
 		if (ft_strcmp(cmd->argv[0], "exit") == 0)
-		{
-			clean_on_exit(cmd, env);
-			ft_exit(cmd, env); // need to clean up when exiting.
-		}
+			ft_exit(cmd, env);
 		else if (ft_strcmp(cmd->argv[0], "export") == 0 && cmd->argv[1])
-		{
 			g_exit_status = ft_export(cmd, &env);
-		}
 		else if (ft_strcmp(cmd->argv[0], "unset") == 0)
-		{
 			g_exit_status = ft_unset(cmd, &env);
-		}
 		else if (ft_strcmp(cmd->argv[0], "cd") == 0)
-		{
 			g_exit_status = ft_cd(cmd, env);
-		}
 	}
 }
 
@@ -1439,39 +1430,6 @@ void	wait_for_child(pid_t last_pid)
     }
 }
 
-// connect the pipes between the i cmd (2 or more)
-// make the stdin/stdout of this child point to the right place
-void	pipeline_orchestration(t_cmd *cmd, t_cmd *cmd_list, int prev_fd, int pipe_fd[2])
-{
-	pid_t	last_pid;
-	while (cmd)
-	{
-		if (cmd->next)
-			pipe(pipe_fd);
-		last_pid = fork();
-		if (last_pid == -1)
-		{
-			perror("fork");
-			return ;
-		}
-		if (last_pid == 0)
-		{
-			signal(SIGINT, SIG_DFL);
-			signal(SIGQUIT, SIG_DFL);
-			close_unused_heredoc_fds(cmd_list, cmd);
-			
-			// set_up_fds()
-
-			// apply_redirection()
-
-			// execute_children_builtin()
-
-		}
-		// clean_parent_fds()
-	}
-	//update_status()
-}
-
 void	apply_redirection(t_cmd *cmd, t_env *env)
 {
 	int	fd; 
@@ -1529,28 +1487,47 @@ void	cleanup_parent(t_cmd **cmd, int pipe_fd[2], int *prev_fd)
 	*cmd = (*cmd)->next;
 }
 
-/* executor
-└── run_parent_builtin_if_needed
-└── pipeline_orchestration
-    ├── fork
-    │   ├── (child)
-    │   │   ├── setup_child_fds        ← plumbing
-    │   │   ├── apply_redirections     ← still plumbing
-    │   │   └── execute_child_command  ← logic
-    │   └── (parent)
-    │       └── cleanup_parent_fds
-└── wait_and_update_status
-*/
+void	process_cmd(t_cmd *cmd_list, t_env *env, int prev_fd)
+{
+	t_cmd	*cmd;
+	int	pipe_fd[2];
+	pid_t	last_pid;
+
+	cmd = cmd_list;
+	last_pid = 0;
+	int c = 0;
+	while (cmd || c >= 10)
+	{
+		if (cmd->next)
+			pipe(pipe_fd);
+		last_pid = fork();
+		if (on_fork_error(last_pid) == 0)
+			return ;
+		if (last_pid == 0)
+		{
+			spawn_child(last_pid, cmd_list, pipe_fd, prev_fd);
+			if (cmd->next)
+				close_pipes(pipe_fd);
+			process_child(cmd, env);
+		}
+		else
+			cleanup_parent(&cmd, pipe_fd, &prev_fd);
+	}
+}
 
 void executor(t_cmd *cmd_list, t_env *env)
 {
-    int pipe_fd[2]; 
-    int prev_fd = -1;  // there is no previous cmd output to read from
-    t_cmd *cmd = cmd_list;
-//    int	ret;
+    //int	pipe_fd[2];
+    int	prev_fd;
+    t_cmd	*cmd;
+    pid_t	last_pid;
 
+    prev_fd = -1;
+    cmd = cmd_list;
+    last_pid = 0;
     execute_parent_builtin(cmd_list, env);
-    pid_t last_pid = 0;
+    process_cmd(cmd_list, env, prev_fd);
+    /*
     while (cmd) 
     {
 	    if (cmd->next) 
@@ -1568,6 +1545,7 @@ void executor(t_cmd *cmd_list, t_env *env)
 	    else 
 		    cleanup_parent(&cmd, pipe_fd, &prev_fd);
     }
+    */
     if (prev_fd != -1) 
 	    close(prev_fd); 
     wait_for_child(last_pid);

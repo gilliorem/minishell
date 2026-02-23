@@ -128,6 +128,7 @@
 // the way to handle signal: use tuned function and sigaction to be able to have different parameter in my handler- use a struct with sigaction type
 
 
+#include <sys/ioctl.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -189,10 +190,11 @@ void handle_sigquit(int sig)
 void handle_sigint_heredoc(int sig)
 {
 //	write(1, "sigint heredocs\n", 16);
-	g_exit_status = -1;
-	write(1, "\n", 1);
-	rl_on_new_line();
-	rl_replace_line("", 0);
+//	g_exit_status = -1;
+//	write(1, "\n", 1);
+//	rl_on_new_line();
+//	rl_replace_line("", 0);
+//	exit(1);
 //	printf("%d\n",g_exit_status);
 }
 
@@ -661,22 +663,17 @@ int run_heredoc(char *delimiter)
 {
 	int fd[2];
 	if (pipe(fd) == -1) { perror("pipe"); return (-1); }
+	signal(SIGINT, handle_sigint_heredoc);
 
 	char *line;
 	while (1)
 	{
-		signal(SIGINT, handle_sigint_heredoc);	
-		//if (g_exit_status == -1){free(line);break;}
 		line = readline("> ");
 		if (!line) break;
-		if (strcmp(line, delimiter) == 0 || g_exit_status == -1){ free(line); break; }
+		if (strcmp(line, delimiter) == 0)
 		write(fd[1], line, strlen(line));
 		write(fd[1], "\n", 1);
 		free(line);
-	}
-	if (g_exit_status == -1)
-	{
-		g_exit_status = 130;
 	}
 	close(fd[1]);
 	return (fd[0]); 
@@ -808,11 +805,15 @@ void executor(t_cmd *cmd_list, t_env *env)
 			{
 				g_exit_status = WEXITSTATUS(status);
 			}
-			if (WTERMSIG(status))
+			if (WTERMSIG(status) == SIGQUIT)
 			{
 				g_exit_status = WTERMSIG(status) + 128;
-				if (WCOREDUMP(status))
-					write(2, "Quit (core dumped)\n",19);
+				//if (WCOREDUMP(status))
+				write(2, "Quit (core dumped)\n",19);
+			}
+			else if (WTERMSIG(status) == SIGINT)
+			{
+				g_exit_status = WTERMSIG(status) + 128;
 			}
 		}
 	}

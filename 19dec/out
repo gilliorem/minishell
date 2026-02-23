@@ -1,11 +1,10 @@
-.
-..
 1
 a.out
 libft
 libft.a
 minishell.c
-.minishell.c.swp
 minishell_expander_heredocs_19dec_02am.c
+minishell.h
 out
 supp.supp
+test.txt
